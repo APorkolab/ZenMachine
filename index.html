@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Zen Gép</title>
+	<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-light">
+
+	<div class="container mt-5">
+		<button id="toggleDarkMode" class="btn btn-dark">Sötét Mód</button>
+		<input type="number" id="timerValue" placeholder="Percekben">
+		<button id="setTimer">Időzítő beállítása</button>
+		<select id="backgroundSelector">
+			<option value="beach">Tengerpart</option>
+			<option value="forest">Erdő</option>
+			<!-- További opciók -->
+		</select>
+
+		<h1 class="text-center mb-4">Zen Gép</h1>
+		<div id="soundsContainer" class="mb-4">
+			<!-- A hangok dinamikusan kerülnek ide -->
+		</div>
+		<button class="btn btn-primary mb-3" onclick="addNewSound()">Új hang hozzáadása</button>
+		<button class="btn btn-danger mb-3" onclick="stopAllSounds()">Minden hang leállítása</button>
+		<input type="time" id="alarmTime">
+		<button id="setAlarm">Ébresztő beállítása</button>
+		<label for="playbackRate">Lejátszás sebessége:</label>
+		<input type="range" min="0.5" max="2" step="0.1" value="1" id="playbackRate">
+		<span id="currentRate">1x</span>
+		<select id="backgroundNoise">
+			<option value="rain">Eső</option>
+			<option value="waves">Tenger hullámai</option>
+			<option value="forest">Erdei hangok</option>
+		</select>
+
+		<div id="equalizer" class="mb-4">
+			<h2 class="text-center">Equalizer</h2>
+			<div class="d-flex justify-content-between">
+				<div class="slider-container">
+					<label for="bass">Bass:</label>
+					<input type="range" class="custom-range" id="bass" min="0" max="2" step="0.1" value="1"
+						onchange="adjustEqualizer('bass')">
+				</div>
+				<div class="slider-container">
+					<label for="mid">Mid:</label>
+					<input type="range" class="custom-range" id="mid" min="0" max="2" step="0.1" value="1"
+						onchange="adjustEqualizer('mid')">
+				</div>
+				<div class="slider-container">
+					<label for="treble">Treble:</label>
+					<input type="range" class="custom-range" id="treble" min="0" max="2" step="0.1" value="1"
+						onchange="adjustEqualizer('treble')">
+				</div>
+			</div>
+		</div>
+
+		<div id="stereoControl" class="mb-4">
+			<h2 class="text-center">Stereo Szabályzó</h2>
+			<div class="d-flex justify-content-center">
+				<div class="slider-container">
+					<label for="pan">Pan:</label>
+					<input type="range" class="custom-range" id="pan" min="-1" max="1" step="0.1" value="0"
+						onchange="adjustPan()">
+				</div>
+			</div>
+		</div>
+
+		<div id="playbackControl" class="mb-4">
+			<h2 class="text-center">Visszajátszás vezérlése</h2>
+			<div class="d-flex justify-content-center">
+				<div class="slider-container">
+					<label for="playbackRate">Sebesség:</label>
+					<input type="range" class="custom-range" id="playbackRate" min="0.5" max="2" step="0.1" value="1"
+						onchange="adjustPlaybackRate()">
+				</div>
+			</div>
+		</div>
+	</div>
+	<div id="advancedControls" class="mb-4">
+		<h2 class="text-center">Haladó vezérlők</h2>
+		<div class="d-flex justify-content-between">
+			<button class="btn btn-info" onclick="saveSettings()">Beállítások mentése</button>
+			<button class="btn btn-info" onclick="loadSettings()">Beállítások betöltése</button>
+			<button class="btn btn-info" onclick="randomizeSounds()">Véletlenszerű hangok</button>
+			<button class="btn btn-info" onclick="toggleLoop()">Ismétlés: <span id="loopStatus">KI</span></button>
+		</div>
+	</div>
+	<script src="js/sound.js"></script>
+	<!-- jQuery -->
+	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+	<!-- Popper.js -->
+	<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>
