@@ -8,7 +8,7 @@ let audioContext;
 
 function initializeAudioContext() {
 	if (!audioContext) {
-		audioContext = new(window.AudioContext || window.webkitAudioContext)();
+		audioContext = new AudioContext();
 
 		gainNode = audioContext.createGain();
 		bassEQ = audioContext.createBiquadFilter();
@@ -82,9 +82,6 @@ function addNewSound() {
 	const checkbox = document.createElement('input');
 	checkbox.type = 'checkbox';
 	checkbox.id = `sound${soundCounter}`;
-	checkbox.onclick = function () {
-		toggleSound(`sound${soundCounter}`);
-	};
 	label.appendChild(checkbox);
 	label.innerHTML += ` ${selectedSound.name}`;
 	soundDiv.appendChild(label);
@@ -106,14 +103,22 @@ function addNewSound() {
 	// Audio objektum létrehozása
 	const audio = new Audio(selectedSound.path);
 	audio.loop = true; // Folyamatos ismétlés beállítása
-
-
-	// Audio csatlakoztatása az audio kontexthez
-	const track = audioContext.createMediaElementSource(audio);
-	track.connect(bassEQ);
-
 	sounds[`sound${soundCounter}`] = audio;
+
+	checkbox.onclick = function () {
+		toggleSound(`sound${soundCounter}`);
+	};
 }
+
+function toggleSound(soundId) {
+	const audio = sounds[soundId];
+	if (audio.paused) {
+		audio.play();
+	} else {
+		audio.pause();
+	}
+}
+
 
 function toggleSoundPlayback(soundId) {
 	const audio = sounds[soundId];
