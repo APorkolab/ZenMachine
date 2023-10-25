@@ -1,30 +1,55 @@
 let soundCounter = 0;
 const sounds = {};
-const audioContext = new(window.AudioContext || window.webkitAudioContext)();
+let alarmInterval;
+let lastPlayedTrack = null;
+let gainNode, bassEQ, midEQ, trebleEQ, panner;
+let audioContext;
 
-const gainNode = audioContext.createGain();
-const bassEQ = audioContext.createBiquadFilter();
-const midEQ = audioContext.createBiquadFilter();
-const trebleEQ = audioContext.createBiquadFilter();
-let panner = audioContext.createPanner();
+
+function initializeAudioContext() {
+	if (!audioContext) {
+		audioContext = new(window.AudioContext || window.webkitAudioContext)();
+
+		gainNode = audioContext.createGain();
+		bassEQ = audioContext.createBiquadFilter();
+		midEQ = audioContext.createBiquadFilter();
+		trebleEQ = audioContext.createBiquadFilter();
+		panner = audioContext.createPanner();
+
+		bassEQ.type = "lowshelf";
+		bassEQ.frequency.value = 150;
+		bassEQ.gain.value = 0;
+
+		midEQ.type = "peaking";
+		midEQ.frequency.value = 1000;
+		midEQ.gain.value = 0;
+
+		trebleEQ.type = "highshelf";
+		trebleEQ.frequency.value = 3000;
+		trebleEQ.gain.value = 0;
+
+		bassEQ.connect(midEQ);
+		midEQ.connect(trebleEQ);
+		trebleEQ.connect(panner);
+		panner.connect(audioContext.destination);
+	}
+}
+
+document.addEventListener('click', function () {
+	initializeAudioContext();
+
+	if (audioContext.state === 'suspended') {
+		audioContext.resume().then(() => {
+			console.log('AudioContext successfully resumed!');
+		}).catch((error) => {
+			console.error('Failed to resume AudioContext:', error);
+		});
+	}
+
+	// További kódok...
+});
+
 let isLooping = false;
-
-bassEQ.type = "lowshelf";
-bassEQ.frequency.value = 150;
-bassEQ.gain.value = 0;
-
-midEQ.type = "peaking";
-midEQ.frequency.value = 1000;
-midEQ.gain.value = 0;
-
-trebleEQ.type = "highshelf";
-trebleEQ.frequency.value = 3000;
-trebleEQ.gain.value = 0;
-
-bassEQ.connect(midEQ);
-midEQ.connect(trebleEQ);
-trebleEQ.connect(panner);
-panner.connect(audioContext.destination);
 
 const soundLibrary = [{
 		path: '/sounds/heavy-rain.mp3',
@@ -37,11 +62,12 @@ const soundLibrary = [{
 	{
 		path: '/sounds/large_waterfall_1.mp3',
 		name: 'Large Waterfall'
-	},
+	}
 ];
 
 
 function addNewSound() {
+	initializeAudioContext();
 	soundCounter++;
 
 	// Véletlenszerű hang kiválasztása a tömbből
@@ -89,32 +115,33 @@ function addNewSound() {
 	sounds[`sound${soundCounter}`] = audio;
 }
 
-document.addEventListener('click', function () {
-	if (audioContext.state === 'suspended') {
-		audioContext.resume().then(() => {
-			console.log('AudioContext successfully resumed!');
-		}).catch((error) => {
-			console.error('Failed to resume AudioContext:', error);
-		});
-	}
-});
-
-
-
-function toggleSound(soundId) {
+function toggleSoundPlayback(soundId) {
 	const audio = sounds[soundId];
 	if (audio.paused) {
 		audio.play();
-		audio.resume();
 	} else {
 		audio.pause();
 	}
 }
 
+function toggleSound(soundId) {
+	if (audioContext.state === 'suspended') {
+		audioContext.resume().then(() => {
+			toggleSoundPlayback(soundId);
+		}).catch((error) => {
+			console.error('Failed to resume AudioContext:', error);
+		});
+	} else {
+		toggleSoundPlayback(soundId);
+	}
+}
+
 function adjustVolume(soundId) {
-	const volumeSlider = document.getElementById(`volume${soundId.charAt(soundId.length-1)}`);
+	const soundNumber = soundId.match(/\d+$/)[0]; // Extract the number at the end of the ID
+	const volumeSlider = document.getElementById(`volume${soundNumber}`);
 	sounds[soundId].volume = volumeSlider.value;
 }
+
 
 function stopAllSounds() {
 	for (const sound in sounds) {
@@ -178,8 +205,10 @@ function loadSettings() {
 
 	// Hangok visszaállítása
 	for (const sound in savedSettings.sounds) {
-		sounds[sound].src = savedSettings.sounds[sound].src;
-		sounds[sound].volume = savedSettings.sounds[sound].volume;
+		if (sounds[sound]) {
+			sounds[sound].src = savedSettings.sounds[sound].src;
+			sounds[sound].volume = savedSettings.sounds[sound].volume;
+		}
 	}
 
 	// Equalizer és egyéb beállítások visszaállítása
@@ -233,15 +262,18 @@ document.getElementById('backgroundSelector').addEventListener('change', functio
 
 document.getElementById('setAlarm').addEventListener('click', function () {
 	let alarmTime = new Date(document.getElementById('alarmTime').value);
-	let now = new Date();
-	let timeToAlarm = alarmTime.getTime() - now.getTime();
-	if (timeToAlarm < 0) {
-		alert('Az ébresztő időpontja nem lehet a jelen időpont előtt!');
-		return;
+
+	if (alarmInterval) { // Ha már van beállított ébresztő, akkor töröljük azt
+		clearInterval(alarmInterval);
 	}
-	setTimeout(function () {
-		// Itt játssza le az ébresztő hangot
-	}, timeToAlarm);
+
+	alarmInterval = setInterval(function () {
+		let now = new Date();
+		if (now >= alarmTime) {
+			// Itt játssza le az ébresztő hangot
+			clearInterval(alarmInterval); // ne ellenőrizze tovább
+		}
+	}, 60 * 1000); // percenként ellenőrzi
 });
 
 document.getElementById('playbackRate').addEventListener('input', function () {
@@ -273,9 +305,13 @@ source.connect(panner);
 panner.connect(audioContext.destination);
 
 function autoMix() {
-	let tracks = [track1, track2, track3]; // feltételezve, hogy ezek az audio sávok
-	let randomTrack = tracks[Math.floor(Math.random() * tracks.length)];
+	let tracks = [track1, track2, track3];
+
+	let availableTracks = tracks.filter(track => track !== lastPlayedTrack); // Az utoljára lejátszott audiosávot kizárjuk
+	let randomTrack = availableTracks[Math.floor(Math.random() * availableTracks.length)];
+
 	randomTrack.play();
+	lastPlayedTrack = randomTrack;
 }
 
 if ('serviceWorker' in navigator) {
