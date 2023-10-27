@@ -1,20 +1,41 @@
-let soundCounter = 0;
+let soundCounter = 1;
 const sounds = {};
 let alarmInterval;
 let lastPlayedTrack = null;
 let gainNode, bassEQ, midEQ, trebleEQ, panner;
-let audioContext;
+var audioContext = new AudioContext();
+
+const defaultSettings = {
+	bass: 0,
+	mid: 0,
+	treble: 0,
+	pan: 0,
+	playbackRate: 1
+};
+
+async function loadAudioBuffer(url) {
+	const response = await fetch(url);
+	const arrayBuffer = await response.arrayBuffer();
+	const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+	return audioBuffer;
+}
+
+
 
 
 function initializeAudioContext() {
 	if (!audioContext) {
-		audioContext = new AudioContext();
+		audioContext = new(window.AudioContext || window.webkitAudioContext)();
 
 		gainNode = audioContext.createGain();
+		gainNode.gain.value = 1; // Ezzel biztosítjuk, hogy van kezdeti hang
+
 		bassEQ = audioContext.createBiquadFilter();
 		midEQ = audioContext.createBiquadFilter();
 		trebleEQ = audioContext.createBiquadFilter();
 		panner = audioContext.createPanner();
+		gainNode.connect(audioContext.destination);
+
 
 		bassEQ.type = "lowshelf";
 		bassEQ.frequency.value = 150;
@@ -28,12 +49,23 @@ function initializeAudioContext() {
 		trebleEQ.frequency.value = 3000;
 		trebleEQ.gain.value = 0;
 
+		audioSource.connect(gainNode);
+		gainNode.connect(bassEQ);
 		bassEQ.connect(midEQ);
 		midEQ.connect(trebleEQ);
 		trebleEQ.connect(panner);
 		panner.connect(audioContext.destination);
 	}
 }
+
+document.getElementById('startAudio').addEventListener('click', function () {
+	initializeAudioContext();
+	// Kezdeti hangok hozzáadása
+	for (let i = 0; i < 3; i++) {
+		addNewSound();
+	}
+});
+
 
 document.addEventListener('click', function () {
 	initializeAudioContext();
@@ -66,13 +98,23 @@ const soundLibrary = [{
 ];
 
 
-function addNewSound() {
+async function addNewSound() {
 	initializeAudioContext();
-	soundCounter++;
 
-	// Véletlenszerű hang kiválasztása a tömbből
 	const randomIndex = Math.floor(Math.random() * soundLibrary.length);
 	const selectedSound = soundLibrary[randomIndex];
+
+	const soundBuffer = await loadAudioBuffer(selectedSound.path);
+	const audioSource = audioContext.createBufferSource();
+	audioSource.buffer = soundBuffer;
+	audioSource.connect(audioContext.destination);
+	audioSource.start();
+	audioSource.loop = true;
+
+	sounds[`sound${soundCounter}`] = {
+		buffer: soundBuffer,
+		source: null
+	};
 
 	// HTML elemek létrehozása
 	const soundDiv = document.createElement('div');
@@ -85,6 +127,7 @@ function addNewSound() {
 	label.appendChild(checkbox);
 	label.innerHTML += ` ${selectedSound.name}`;
 	soundDiv.appendChild(label);
+	soundCounter++;
 
 	const volumeSlider = document.createElement('input');
 	volumeSlider.type = 'range';
@@ -100,51 +143,39 @@ function addNewSound() {
 
 	document.getElementById('soundsContainer').appendChild(soundDiv);
 
-	// Audio objektum létrehozása
-	const audio = new Audio(selectedSound.path);
-	audio.loop = true; // Folyamatos ismétlés beállítása
-	sounds[`sound${soundCounter}`] = audio;
-
 	checkbox.onclick = function () {
 		toggleSound(`sound${soundCounter}`);
 	};
 }
 
 function toggleSound(soundId) {
-	const audio = sounds[soundId];
-	if (audio.paused) {
-		audio.play();
-	} else {
-		audio.pause();
-	}
-}
+	audioContext.resume().then(() => { // Az audioContext.resume használata
+		const audioData = sounds[soundId];
 
-
-function toggleSoundPlayback(soundId) {
-	const audio = sounds[soundId];
-	if (audio.paused) {
-		audio.play();
-	} else {
-		audio.pause();
-	}
-}
-
-function toggleSound(soundId) {
-	if (audioContext.state === 'suspended') {
-		audioContext.resume().then(() => {
-			toggleSoundPlayback(soundId);
-		}).catch((error) => {
-			console.error('Failed to resume AudioContext:', error);
-		});
-	} else {
-		toggleSoundPlayback(soundId);
-	}
+		if (!audioData.source) { // Ha még nincs source, vagy megszakítottuk
+			// Létrehozunk egy új AudioBufferSourceNode-t
+			audioData.source = audioContext.createBufferSource();
+			audioData.source.buffer = audioData.buffer;
+			audioData.source.connect(gainNode);
+			audioData.source.loop = true;
+			audioData.source.start();
+		} else {
+			// Megszakítjuk a jelenlegi AudioBufferSourceNode-t
+			audioData.source.stop();
+			audioData.source = null; // Nullázzuk, hogy jelezzük, hogy megszakítottuk
+		}
+	}).catch((error) => {
+		console.error('Failed to resume AudioContext:', error);
+	});
 }
 
 function adjustVolume(soundId) {
-	const soundNumber = soundId.match(/\d+$/)[0]; // Extract the number at the end of the ID
-	const volumeSlider = document.getElementById(`volume${soundNumber}`);
-	sounds[soundId].volume = volumeSlider.value;
+	const volumeSlider = document.getElementById(soundId.replace('sound', 'volume'));
+	if (sounds[soundId] && sounds[soundId].source) {
+		sounds[soundId].source.gain.value = volumeSlider.value; // Alkalmazza a hangerő változását
+	} else {
+		console.error(`Sound with ID ${soundId} not found!`);
+	}
 }
 
 
@@ -176,10 +207,7 @@ function adjustPan() {
 	panner.pan.value = value;
 }
 
-// Kezdeti hangok hozzáadása
-for (let i = 0; i < 3; i++) {
-	addNewSound();
-}
+
 
 function adjustPlaybackRate() {
 	const rate = document.getElementById('playbackRate').value;
@@ -190,7 +218,6 @@ function adjustPlaybackRate() {
 
 function saveSettings() {
 	const settings = {
-		sounds: sounds,
 		bass: document.getElementById('bass').value,
 		mid: document.getElementById('mid').value,
 		treble: document.getElementById('treble').value,
@@ -202,26 +229,33 @@ function saveSettings() {
 }
 
 function loadSettings() {
-	const savedSettings = JSON.parse(localStorage.getItem('zenGepeSettings'));
+	const savedSettings = JSON.parse(localStorage.getItem('zenGepeSettings')) || defaultSettings;
 	if (!savedSettings) {
 		alert('Nincsenek mentett beállítások!');
 		return;
 	}
 
-	// Hangok visszaállítása
-	for (const sound in savedSettings.sounds) {
+	function resumeAudioContext() {
+		if (audioContext.state === 'suspended') {
+			return audioContext.resume();
+		}
+		return Promise.resolve();
+	}
+
+
+	// Hangok visszaállítása (ezek nem voltak elmentve a localStorage-ban, csak a beállítások)
+	for (const sound in sounds) {
 		if (sounds[sound]) {
-			sounds[sound].src = savedSettings.sounds[sound].src;
-			sounds[sound].volume = savedSettings.sounds[sound].volume;
+			sounds[sound].playbackRate = savedSettings.playbackRate || 1;
 		}
 	}
 
 	// Equalizer és egyéb beállítások visszaállítása
-	document.getElementById('bass').value = savedSettings.bass;
-	document.getElementById('mid').value = savedSettings.mid;
-	document.getElementById('treble').value = savedSettings.treble;
-	document.getElementById('pan').value = savedSettings.pan;
-	document.getElementById('playbackRate').value = savedSettings.playbackRate;
+	document.getElementById('bass').value = savedSettings.bass || 0;
+	document.getElementById('mid').value = savedSettings.mid || 0;
+	document.getElementById('treble').value = savedSettings.treble || 0;
+	document.getElementById('pan').value = savedSettings.pan || 0;
+	document.getElementById('playbackRate').value = savedSettings.playbackRate || 1;
 
 	adjustEqualizer('bass');
 	adjustEqualizer('mid');
@@ -257,6 +291,7 @@ document.getElementById('setTimer').addEventListener('click', function () {
 	let minutes = document.getElementById('timerValue').value;
 	setTimeout(function () {
 		stopAllSounds();
+		alert('Az időzítő lejárt és az összes hangot megállítottam!');
 	}, minutes * 60 * 1000);
 });
 
@@ -295,19 +330,19 @@ document.getElementById('backgroundNoise').addEventListener('change', function (
 });
 
 
-panner.panningModel = 'HRTF';
-panner.distanceModel = 'inverse';
-panner.refDistance = 1;
-panner.maxDistance = 10000;
-panner.rolloffFactor = 1;
-panner.coneInnerAngle = 360;
-panner.coneOuterAngle = 0;
-panner.coneOuterGain = 0;
-panner.setPosition(0, 0, 0);
+// panner.panningModel = 'HRTF';
+// panner.distanceModel = 'inverse';
+// panner.refDistance = 1;
+// panner.maxDistance = 10000;
+// panner.rolloffFactor = 1;
+// panner.coneInnerAngle = 360;
+// panner.coneOuterAngle = 0;
+// panner.coneOuterGain = 0;
+// panner.setPosition(0, 0, 0);
 
-let source = audioContext.createBufferSource();
-source.connect(panner);
-panner.connect(audioContext.destination);
+// let source = audioContext.createBufferSource();
+// source.connect(panner);
+// panner.connect(audioContext.destination);
 
 function autoMix() {
 	let tracks = [track1, track2, track3];
@@ -319,12 +354,12 @@ function autoMix() {
 	lastPlayedTrack = randomTrack;
 }
 
-if ('serviceWorker' in navigator) {
-	navigator.serviceWorker.register('/service-worker.js')
-		.then(function (registration) {
-			console.log('Service Worker regisztrálva a következő hatókörrel:', registration.scope);
-		})
-		.catch(function (error) {
-			console.log('Service Worker regisztráció sikertelen:', error);
-		});
-}
+// if ('serviceWorker' in navigator) {
+// 	navigator.serviceWorker.register('/service-worker.js')
+// 		.then(function (registration) {
+// 			console.log('Service Worker regisztrálva a következő hatókörrel:', registration.scope);
+// 		})
+// 		.catch(function (error) {
+// 			console.log('Service Worker regisztráció sikertelen:', error);
+// 		});
+// }

@@ -1,10 +1,10 @@
 const CACHE_NAME = 'zen-gep-v1';
 const urlsToCache = [
 	'/',
-	'/styles/main.css',
-	'/script/main.js',
-	'/sounds/rain.mp3',
-	'/sounds/waves.mp3',
+	'/css/style.css',
+	'/js/sound.js',
+	'/sounds/bells-tibetan.mp3',
+	'/sounds/heavy-rain.mp3',
 	// ... többi erőforrás
 ];
 

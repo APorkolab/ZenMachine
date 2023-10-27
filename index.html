@@ -29,8 +29,7 @@
 		<button class="btn btn-danger mb-3" onclick="stopAllSounds()">Minden hang leállítása</button>
 		<input type="time" id="alarmTime">
 		<button id="setAlarm">Ébresztő beállítása</button>
-		<label for="playbackRate">Lejátszás sebessége:</label>
-		<input type="range" min="0.5" max="2" step="0.1" value="1" id="playbackRate">
+
 		<span id="currentRate">1x</span>
 		<select id="backgroundNoise">
 			<option value="rain">Eső</option>
@@ -89,6 +88,8 @@
 			<button class="btn btn-info" onclick="randomizeSounds()">Véletlenszerű hangok</button>
 			<button class="btn btn-info" onclick="toggleLoop()">Ismétlés: <span id="loopStatus">KI</span></button>
 		</div>
+		<button id="startAudio">Hang elindítása</button>
+
 	</div>
 	<script src="js/sound.js"></script>
 	<!-- jQuery -->
