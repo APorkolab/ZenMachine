@@ -21,14 +21,12 @@ async function loadAudioBuffer(url) {
 }
 
 
-
-
 function initializeAudioContext() {
 	if (!audioContext) {
 		audioContext = new(window.AudioContext || window.webkitAudioContext)();
 
 		gainNode = audioContext.createGain();
-		gainNode.gain.value = 1; // Ezzel biztosítjuk, hogy van kezdeti hang
+		//gainNode.gain.value = 1; // Ezzel biztosítjuk, hogy van kezdeti hang
 
 		bassEQ = audioContext.createBiquadFilter();
 		midEQ = audioContext.createBiquadFilter();
@@ -49,7 +47,6 @@ function initializeAudioContext() {
 		trebleEQ.frequency.value = 3000;
 		trebleEQ.gain.value = 0;
 
-		audioSource.connect(gainNode);
 		gainNode.connect(bassEQ);
 		bassEQ.connect(midEQ);
 		midEQ.connect(trebleEQ);
@@ -61,7 +58,7 @@ function initializeAudioContext() {
 document.getElementById('startAudio').addEventListener('click', function () {
 	initializeAudioContext();
 	// Kezdeti hangok hozzáadása
-	for (let i = 0; i < 3; i++) {
+	for (let i = 0; i < 1; i++) {
 		addNewSound();
 	}
 });
@@ -97,8 +94,12 @@ const soundLibrary = [{
 	}
 ];
 
-
 async function addNewSound() {
+
+	if (audioContext.state === 'suspended') {
+		audioContext.resume();
+	}
+
 	initializeAudioContext();
 
 	const randomIndex = Math.floor(Math.random() * soundLibrary.length);
@@ -107,13 +108,18 @@ async function addNewSound() {
 	const soundBuffer = await loadAudioBuffer(selectedSound.path);
 	const audioSource = audioContext.createBufferSource();
 	audioSource.buffer = soundBuffer;
-	audioSource.connect(audioContext.destination);
+	const gainNode = audioContext.createGain();
+	audioSource.connect(gainNode);
+	gainNode.connect(audioContext.destination);
+
+	// audioSource.connect(audioContext.destination);
 	audioSource.start();
 	audioSource.loop = true;
 
 	sounds[`sound${soundCounter}`] = {
 		buffer: soundBuffer,
-		source: null
+		source: audioSource, // A BufferSourceNode tárolása
+		gain: gainNode // A GainNode tárolása
 	};
 
 	// HTML elemek létrehozása
@@ -127,7 +133,7 @@ async function addNewSound() {
 	label.appendChild(checkbox);
 	label.innerHTML += ` ${selectedSound.name}`;
 	soundDiv.appendChild(label);
-	soundCounter++;
+
 
 	const volumeSlider = document.createElement('input');
 	volumeSlider.type = 'range';
@@ -135,17 +141,23 @@ async function addNewSound() {
 	volumeSlider.max = '1';
 	volumeSlider.step = '0.01';
 	volumeSlider.id = `volume${soundCounter}`;
-	volumeSlider.oninput = function () {
-		adjustVolume(`sound${soundCounter}`);
-	};
+	volumeSlider.oninput = (function (currentCounter) {
+		return function () {
+			adjustVolume(`sound${currentCounter}`);
+		};
+	})(soundCounter);
 	volumeSlider.value = '0.5';
 	soundDiv.appendChild(volumeSlider);
 
+
 	document.getElementById('soundsContainer').appendChild(soundDiv);
 
+	const currentSoundId = `sound${soundCounter}`;
 	checkbox.onclick = function () {
-		toggleSound(`sound${soundCounter}`);
+		toggleSound(currentSoundId);
 	};
+
+	soundCounter++;
 }
 
 function toggleSound(soundId) {
@@ -170,22 +182,34 @@ function toggleSound(soundId) {
 }
 
 function adjustVolume(soundId) {
-	const volumeSlider = document.getElementById(soundId.replace('sound', 'volume'));
+	const volumeSliderId = soundId.replace('sound', 'volume');
+	const volumeSlider = document.getElementById(volumeSliderId);
+
+	if (!volumeSlider) {
+		console.error(`Volume slider with ID ${volumeSliderId} not found!`);
+		return;
+	}
+
 	if (sounds[soundId] && sounds[soundId].source) {
-		sounds[soundId].source.gain.value = volumeSlider.value; // Alkalmazza a hangerő változását
+		sounds[soundId].gain.gain.value = volumeSlider.value;
 	} else {
 		console.error(`Sound with ID ${soundId} not found!`);
 	}
+
 }
+
 
 
 function stopAllSounds() {
 	for (const sound in sounds) {
-		sounds[sound].pause();
-		sounds[sound].currentTime = 0;
-		document.getElementById(sound).checked = false;
+		if (sounds[sound].source) {
+			sounds[sound].source.stop();
+			sounds[sound].source = null;
+		}
+		document.getElementsByClassName(sound).checked = false;
 	}
 }
+
 
 function adjustEqualizer(type) {
 	const value = document.getElementById(type).value;
