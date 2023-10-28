@@ -95,7 +95,7 @@ const soundLibrary = [{
 ];
 
 async function addNewSound() {
-
+	soundCounter++;
 	if (audioContext.state === 'suspended') {
 		audioContext.resume();
 	}
@@ -130,10 +130,11 @@ async function addNewSound() {
 	const checkbox = document.createElement('input');
 	checkbox.type = 'checkbox';
 	checkbox.id = `sound${soundCounter}`;
+	checkbox.checked = true; // Bejelöljük a checkboxot
 	label.appendChild(checkbox);
-	label.innerHTML += ` ${selectedSound.name}`;
+	const textNode = document.createTextNode(` ${selectedSound.name}`);
+	label.appendChild(textNode);
 	soundDiv.appendChild(label);
-
 
 	const volumeSlider = document.createElement('input');
 	volumeSlider.type = 'range';
@@ -156,47 +157,47 @@ async function addNewSound() {
 	checkbox.onclick = function () {
 		toggleSound(currentSoundId);
 	};
-
-	soundCounter++;
 }
 
 function toggleSound(soundId) {
-	audioContext.resume().then(() => { // Az audioContext.resume használata
+	audioContext.resume().then(() => {
 		const audioData = sounds[soundId];
+		const checkbox = document.getElementById(soundId);
 
-		if (!audioData.source) { // Ha még nincs source, vagy megszakítottuk
-			// Létrehozunk egy új AudioBufferSourceNode-t
-			audioData.source = audioContext.createBufferSource();
-			audioData.source.buffer = audioData.buffer;
-			audioData.source.connect(gainNode);
-			audioData.source.loop = true;
-			audioData.source.start();
+		if (checkbox.checked) {
+			// Ha a checkbox be van jelölve
+			if (!audioData.source) {
+				const source = audioContext.createBufferSource();
+				source.buffer = audioData.buffer;
+				source.connect(audioData.gain);
+				source.loop = true;
+				source.start();
+				audioData.source = source; // Frissítjük a source-t az audioData objektumban
+			}
 		} else {
-			// Megszakítjuk a jelenlegi AudioBufferSourceNode-t
-			audioData.source.stop();
-			audioData.source = null; // Nullázzuk, hogy jelezzük, hogy megszakítottuk
+			// Ha a checkbox nincs bepipálva
+			if (audioData.source) {
+				audioData.source.stop();
+				audioData.source.disconnect(audioData.gain);
+				audioData.source = null; // Töröljük a source-t az audioData objektumból
+			}
 		}
 	}).catch((error) => {
 		console.error('Failed to resume AudioContext:', error);
 	});
 }
 
+
+
 function adjustVolume(soundId) {
-	const volumeSliderId = soundId.replace('sound', 'volume');
-	const volumeSlider = document.getElementById(volumeSliderId);
-
-	if (!volumeSlider) {
-		console.error(`Volume slider with ID ${volumeSliderId} not found!`);
-		return;
-	}
-
-	if (sounds[soundId] && sounds[soundId].source) {
-		sounds[soundId].gain.gain.value = volumeSlider.value;
+	const volumeSlider = document.getElementById(soundId.replace('sound', 'volume'));
+	if (sounds[soundId] && sounds[soundId].gain) {
+		sounds[soundId].gain.gain.value = parseFloat(volumeSlider.value);
 	} else {
 		console.error(`Sound with ID ${soundId} not found!`);
 	}
-
 }
+
 
 
 
@@ -206,9 +207,11 @@ function stopAllSounds() {
 			sounds[sound].source.stop();
 			sounds[sound].source = null;
 		}
-		document.getElementsByClassName(sound).checked = false;
+		document.getElementById(sound).checked = false;
 	}
 }
+
+
 
 
 function adjustEqualizer(type) {
