@@ -5,6 +5,7 @@ let alarmInterval;
 let lastPlayedTrack = null;
 let gainNode;
 let alarmSound = new Audio('/mp3/alarm.mp3');
+let autoMixInterval;
 
 let bassEQ = new BiquadFilterNode(audioContext, {
 	type: 'lowshelf',
@@ -92,19 +93,85 @@ document.addEventListener('click', function () {
 
 let isLooping = false;
 
+const musicLibrary = [{
+		path: '/mp3/awakening.mp3',
+		name: 'Awakening'
+	},
+	{
+		path: '/mp3/etherealEternity.mp3',
+		name: 'Ethereal Eternity'
+	},
+	{
+		path: '/mp3/pianoAtNight.mp3',
+		name: 'Piano at Night'
+	}
+];
+
 const soundLibrary = [{
+		id: 'heavy-rain',
 		path: '/sounds/heavy-rain.mp3',
 		name: 'Heavy Rain'
 	},
 	{
+		id: 'bells-tibetan',
 		path: '/sounds/bells-tibetan.mp3',
 		name: 'Bells Tibetan Large'
 	},
 	{
+		id: 'large-waterfall',
 		path: '/sounds/large_waterfall_1.mp3',
 		name: 'Large Waterfall'
 	}
 ];
+
+function populateSelectOptions() {
+	const selectElement = document.getElementById('backgroundNoise');
+
+	soundLibrary.forEach(sound => {
+		let option = document.createElement('option');
+		option.value = sound.id;
+		option.textContent = sound.name;
+		selectElement.appendChild(option);
+	});
+}
+
+// Eseménykezelő a Leállítás/Újraindítás gombhoz
+document.getElementById('toggleAudio').addEventListener('click', function () {
+	const audio = document.getElementById('audioElement');
+
+	if (audio.paused) {
+		audio.play();
+	} else {
+		audio.pause();
+	}
+});
+
+document.getElementById('volumeControl').addEventListener('input', function () {
+	const audio = document.getElementById('audioElement');
+	audio.volume = this.value; // Frissíti az audió hangerőt a csúszka értékével
+});
+
+document.getElementById('backgroundNoise').addEventListener('change', function () {
+	let selectedNoiseId = this.value;
+	let audio = document.getElementById('audioElement');
+	let selectedSound = soundLibrary.find(sound => sound.id === selectedNoiseId);
+
+	if (selectedSound) {
+		audio.src = selectedSound.path;
+		audio.play();
+	}
+});
+
+populateSelectOptions();
+
+
+let currentIndex = 0;
+
+function getNextSound() {
+	const selectedSound = musicLibrary[currentIndex];
+	currentIndex = (currentIndex + 1) % musicLibrary.length;
+	return selectedSound;
+}
 
 async function addNewSound() {
 	soundCounter++;
@@ -114,8 +181,7 @@ async function addNewSound() {
 
 	initializeAudioContext();
 
-	const randomIndex = Math.floor(Math.random() * soundLibrary.length);
-	const selectedSound = soundLibrary[randomIndex];
+	const selectedSound = getNextSound();
 
 	const soundBuffer = await loadAudioBuffer(selectedSound.path);
 	const audioSource = audioContext.createBufferSource();
@@ -221,6 +287,11 @@ function stopAllSounds() {
 		}
 		document.getElementById(sound).checked = false;
 	}
+
+	// Leállítja a háttérzajt és visszaállítja a kezdeti állapotba
+	const audio = document.getElementById('audioElement');
+	audio.pause();
+	audio.currentTime = 0;
 }
 
 function adjustEqualizer(type) {
@@ -258,46 +329,34 @@ function saveSettings() {
 		pan: document.getElementById('pan').value,
 		playbackRate: document.getElementById('playbackRate').value
 	};
-	localStorage.setItem('zenGepeSettings', JSON.stringify(settings));
+	localStorage.setItem('audioSettings', JSON.stringify(settings));
 	alert('Beállítások mentve!');
 }
 
 function loadSettings() {
-	const savedSettings = JSON.parse(localStorage.getItem('zenGepeSettings')) || defaultSettings;
-	if (!savedSettings) {
-		alert('Nincsenek mentett beállítások!');
-		return;
+	const settings = JSON.parse(localStorage.getItem('audioSettings'));
+	if (settings) {
+		document.getElementById('bass').value = settings.bass;
+		document.getElementById('mid').value = settings.mid;
+		document.getElementById('treble').value = settings.treble;
+		document.getElementById('pan').value = settings.pan;
+		document.getElementById('playbackRate').value = settings.playbackRate;
+
+		adjustEqualizer('bass');
+		adjustEqualizer('mid');
+		adjustEqualizer('treble');
+		adjustPan();
+		adjustPlaybackRate();
 	}
-
-	function resumeAudioContext() {
-		if (audioContext.state === 'suspended') {
-			return audioContext.resume();
-		}
-		return Promise.resolve();
-	}
-
-	// Hangok visszaállítása (ezek nem voltak elmentve a localStorage-ban, csak a beállítások)
-	for (const sound in sounds) {
-		if (sounds[sound]) {
-			sounds[sound].playbackRate = savedSettings.playbackRate || 1;
-		}
-	}
-
-	// Equalizer és egyéb beállítások visszaállítása
-	document.getElementById('bass').value = savedSettings.bass || 0;
-	document.getElementById('mid').value = savedSettings.mid || 0;
-	document.getElementById('treble').value = savedSettings.treble || 0;
-	document.getElementById('pan').value = savedSettings.pan || 0;
-	document.getElementById('playbackRate').value = savedSettings.playbackRate || 1;
-
-	adjustEqualizer('bass');
-	adjustEqualizer('mid');
-	adjustEqualizer('treble');
-	adjustPan();
-	adjustPlaybackRate();
-
-	alert('Beállítások betöltve!');
 }
+
+function resumeAudioContext() {
+	if (audioContext.state === 'suspended') {
+		return audioContext.resume();
+	}
+	return Promise.resolve();
+}
+
 
 function randomizeSounds() {
 	const soundKeys = Object.keys(sounds);
@@ -345,6 +404,12 @@ document.getElementById('setAlarm').addEventListener('click', function () {
 	let inputTime = document.getElementById('alarmTime').value.split(":");
 	let alarmTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), parseInt(inputTime[0]), parseInt(inputTime[1]));
 
+	// Ellenőrizze, hogy a beállított időpont a jövőben van-e
+	if (alarmTime <= currentTime) {
+		alert('A beállított időpontnak a jövőben kell lennie!');
+		return; // Kilépünk a függvényből, így az ébresztő nem lesz beállítva
+	}
+
 	if (alarmInterval) { // Ha már van beállított ébresztő, akkor töröljük azt
 		clearInterval(alarmInterval);
 	}
@@ -353,11 +418,12 @@ document.getElementById('setAlarm').addEventListener('click', function () {
 		let now = new Date();
 		if (now >= alarmTime) {
 			alarmSound.play();
-			$('#alarmModal').modal('show'); // Modal megjelenítése
+			$('#alarmModal').modal('show');
 			clearInterval(alarmInterval);
 		}
-	}, 20 * 1000); // percenként ellenőrzi
+	}, 10 * 1000);
 });
+
 
 document.getElementById('stopAlarm').addEventListener('click', function () {
 	try {
@@ -387,8 +453,6 @@ document.getElementById('stopAlarmFromModal').addEventListener('click', function
 	$('#alarmModal').modal('hide'); // Modal elrejtése
 });
 
-
-
 document.getElementById('playbackRate').addEventListener('input', function () {
 	let rate = parseFloat(this.value);
 
@@ -402,22 +466,15 @@ document.getElementById('playbackRate').addEventListener('input', function () {
 	document.getElementById('currentRate').textContent = rate + 'x';
 });
 
-
-document.getElementById('backgroundNoise').addEventListener('change', function () {
-	let noise = this.value;
-	let audio = document.getElementById('audioElement');
-	audio.src = 'path_to_audio_files/' + noise + '.mp3';
-	audio.play();
-});
-
-function autoMix() {
-	let tracks = [track1, track2, track3];
-
-	let availableTracks = tracks.filter(track => track !== lastPlayedTrack); // Az utoljára lejátszott audiosávot kizárjuk
-	let randomTrack = availableTracks[Math.floor(Math.random() * availableTracks.length)];
-
-	randomTrack.play();
-	lastPlayedTrack = randomTrack;
+function startAutoMix() {
+	if (autoMixInterval) {
+		clearInterval(autoMixInterval);
+	}
+	autoMixInterval = setInterval(() => {
+		const randomSound = soundLibrary[Math.floor(Math.random() * soundLibrary.length)];
+		document.getElementById('backgroundNoise').value = randomSound.id;
+		document.getElementById('backgroundNoise').dispatchEvent(new Event('change'));
+	}, 30000); // 30 másodpercenként váltja a hangokat.
 }
 
 // if ('serviceWorker' in navigator) {

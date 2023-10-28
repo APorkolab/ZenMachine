@@ -12,6 +12,17 @@
 	/* Például egy eltérő színű link sötét módban */
 }
 
+.equal-width-btn {
+	width: 30%;
+	/* Ezzel állítjuk be az azonos szélességet a gomboknak és a választómezőnek */
+	margin: 0 1%;
+	/* Ezzel adjuk hozzá a margót az elemek közé */
+}
+
+.smaller-select {
+	width: 25%;
+	/* Ezzel csökkentjük a választómező szélességét */
+}
 
 body,
 html {

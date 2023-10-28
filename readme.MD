@@ -80,4 +80,10 @@ Image by <a href="https://pixabay.com/users/bertvthul-1134851/?utm_source=link-a
 
 ## Purple Planet
 
-Password (https://www.purple-planet.com/tracks/passport)
+- Password (https://www.purple-planet.com/tracks/passport)
+
+- Awakening (https://www.purple-planet.com/atmospheric)
+
+- Ethereal Eternity (https://www.purple-planet.com/atmospheric)
+
+- Piano at Night (https://www.purple-planet.com/atmospheric)
