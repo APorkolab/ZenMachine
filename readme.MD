@@ -61,3 +61,13 @@ Zen Machine is licensed under the [CC BY-NC-SA 4.0 DEED](https://creativecommons
 - https://soundbible.com/2217-Heavy-Rain-Wind.html
 - https://soundbible.com/2205-Bells-Tibetan-Large.html
 - https://soundbible.com/2201-Large-Waterfall.html
+
+## Pixabay
+
+Image by <a href="https://pixabay.com/users/bessi-909086/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=736885">bess.hamiti@gmail.com</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=736885">Pixabay</a>
+
+Image by <a href="https://pixabay.com/users/bertvthul-1134851/?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=815297">bertvthul</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=image&utm_content=815297">Pixabay</a>
+
+## Purple Planet
+
+Password (https://www.purple-planet.com/tracks/passport)

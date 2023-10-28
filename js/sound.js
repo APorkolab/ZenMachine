@@ -1,10 +1,10 @@
 var audioContext = new AudioContext();
-
 let soundCounter = 1;
 const sounds = {};
 let alarmInterval;
 let lastPlayedTrack = null;
 let gainNode;
+let alarmSound = new Audio('/mp3/alarm.mp3');
 
 let bassEQ = new BiquadFilterNode(audioContext, {
 	type: 'lowshelf',
@@ -37,7 +37,6 @@ const defaultSettings = {
 	playbackRate: 1
 };
 
-
 async function loadAudioBuffer(url) {
 	const response = await fetch(url);
 	const arrayBuffer = await response.arrayBuffer();
@@ -57,7 +56,6 @@ function initializeAudioContext() {
 		trebleEQ = audioContext.createBiquadFilter();
 		panner = audioContext.createPanner();
 		gainNode.connect(audioContext.destination);
-
 
 		bassEQ.type = "lowshelf";
 		bassEQ.frequency.value = 150;
@@ -79,15 +77,6 @@ function initializeAudioContext() {
 	}
 }
 
-document.getElementById('startAudio').addEventListener('click', function () {
-	initializeAudioContext();
-	// Kezdeti hangok hozzáadása
-	for (let i = 0; i < 1; i++) {
-		addNewSound();
-	}
-});
-
-
 document.addEventListener('click', function () {
 	initializeAudioContext();
 
@@ -99,7 +88,6 @@ document.addEventListener('click', function () {
 		});
 	}
 
-	// További kódok...
 });
 
 let isLooping = false;
@@ -135,15 +123,11 @@ async function addNewSound() {
 
 	const gainNode = audioContext.createGain();
 
-	// audioSource-t az equalizerhez csatlakoztatjuk
 	audioSource.connect(gainNode);
 	gainNode.connect(bassEQ);
 	bassEQ.connect(midEQ);
 	midEQ.connect(trebleEQ);
-	// Az utolsó equalizer-t a pannerhez csatlakoztatjuk
 	trebleEQ.connect(panner);
-	// Végül a panner-t az AudioContext destination-jéhez csatlakoztatjuk
-
 	panner.connect(audioContext.destination);
 
 	audioSource.start();
@@ -182,7 +166,6 @@ async function addNewSound() {
 	})(soundCounter);
 	volumeSlider.value = '0.5';
 	soundDiv.appendChild(volumeSlider);
-
 
 	document.getElementById('soundsContainer').appendChild(soundDiv);
 
@@ -260,8 +243,6 @@ function adjustPan() {
 	panner.pan.value = value;
 }
 
-
-
 function adjustPlaybackRate() {
 	const rate = document.getElementById('playbackRate').value;
 	for (const sound in sounds) {
@@ -294,7 +275,6 @@ function loadSettings() {
 		}
 		return Promise.resolve();
 	}
-
 
 	// Hangok visszaállítása (ezek nem voltak elmentve a localStorage-ban, csak a beállítások)
 	for (const sound in sounds) {
@@ -348,13 +328,22 @@ document.getElementById('setTimer').addEventListener('click', function () {
 	}, minutes * 60 * 1000);
 });
 
-document.getElementById('backgroundSelector').addEventListener('change', function () {
-	let selectedBackground = this.value;
-	document.body.style.backgroundImage = `url('images/${selectedBackground}.jpg')`;
-});
+function setBackground() {
+	let selectedBackground = document.getElementById('backgroundSelector').value;
+	document.body.style.backgroundImage = `url('image/${selectedBackground}.jpg')`;
+}
+
+// Az oldal betöltésekor beállítja az alapértelmezett háttérképet
+window.onload = setBackground;
+
+// Eseményhallgatót ad a legördülő menü változásához
+document.getElementById('backgroundSelector').addEventListener('change', setBackground);
+
 
 document.getElementById('setAlarm').addEventListener('click', function () {
-	let alarmTime = new Date(document.getElementById('alarmTime').value);
+	let currentTime = new Date();
+	let inputTime = document.getElementById('alarmTime').value.split(":");
+	let alarmTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), parseInt(inputTime[0]), parseInt(inputTime[1]));
 
 	if (alarmInterval) { // Ha már van beállított ébresztő, akkor töröljük azt
 		clearInterval(alarmInterval);
@@ -363,11 +352,42 @@ document.getElementById('setAlarm').addEventListener('click', function () {
 	alarmInterval = setInterval(function () {
 		let now = new Date();
 		if (now >= alarmTime) {
-			// Itt játssza le az ébresztő hangot
-			clearInterval(alarmInterval); // ne ellenőrizze tovább
+			alarmSound.play();
+			$('#alarmModal').modal('show'); // Modal megjelenítése
+			clearInterval(alarmInterval);
 		}
-	}, 60 * 1000); // percenként ellenőrzi
+	}, 20 * 1000); // percenként ellenőrzi
 });
+
+document.getElementById('stopAlarm').addEventListener('click', function () {
+	try {
+		if (alarmSound && !alarmSound.paused) {
+			alarmSound.pause();
+			alarmSound.currentTime = 0;
+		}
+
+		if (alarmInterval) {
+			clearInterval(alarmInterval);
+			alarmInterval = null;
+		}
+	} catch (error) {
+		console.error('Hiba:', error);
+	}
+});
+
+document.getElementById('stopAlarmFromModal').addEventListener('click', function () {
+	if (alarmSound) {
+		alarmSound.pause();
+		alarmSound.currentTime = 0;
+	}
+	if (alarmInterval) {
+		clearInterval(alarmInterval);
+		alarmInterval = null;
+	}
+	$('#alarmModal').modal('hide'); // Modal elrejtése
+});
+
+
 
 document.getElementById('playbackRate').addEventListener('input', function () {
 	let rate = parseFloat(this.value);
