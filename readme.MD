@@ -12,7 +12,7 @@
 
 Zen Machine is an advanced web-based audio relaxation tool. It allows users to craft their own serene environment by combining a variety of sounds and tunes. With a plethora of features, Zen Machine aims to provide a comprehensive and customizable audio experience.
 
-The author of this project is [Adam Dr. Porkolab (Mr. ProKey)](www.prokey.dev).
+The author of this project is [Adam Dr. Porkolab (Mr. ProKey)](https://www.prokey.dev).
 
 ## 🌟 Features
 
