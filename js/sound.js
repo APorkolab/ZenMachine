@@ -50,7 +50,7 @@ function initializeAudioContext() {
 		audioContext = new(window.AudioContext || window.webkitAudioContext)();
 
 		gainNode = audioContext.createGain();
-		//gainNode.gain.value = 1; // Ezzel biztosítjuk, hogy van kezdeti hang
+
 
 		bassEQ = audioContext.createBiquadFilter();
 		midEQ = audioContext.createBiquadFilter();
@@ -135,7 +135,7 @@ function populateSelectOptions() {
 	});
 }
 
-// Eseménykezelő a Leállítás/Újraindítás gombhoz
+
 document.getElementById('toggleAudio').addEventListener('click', function () {
 	const audio = document.getElementById('audioElement');
 
@@ -148,7 +148,7 @@ document.getElementById('toggleAudio').addEventListener('click', function () {
 
 document.getElementById('volumeControl').addEventListener('input', function () {
 	const audio = document.getElementById('audioElement');
-	audio.volume = this.value; // Frissíti az audió hangerőt a csúszka értékével
+	audio.volume = this.value;
 });
 
 document.getElementById('backgroundNoise').addEventListener('change', function () {
@@ -205,7 +205,7 @@ async function addNewSound() {
 		gain: gainNode
 	};
 
-	// HTML elemek létrehozása
+
 	const soundDiv = document.createElement('div');
 	soundDiv.className = 'sound';
 
@@ -213,7 +213,7 @@ async function addNewSound() {
 	const checkbox = document.createElement('input');
 	checkbox.type = 'checkbox';
 	checkbox.id = `sound${soundCounter}`;
-	checkbox.checked = true; // Bejelöljük a checkboxot
+	checkbox.checked = true;
 	label.appendChild(checkbox);
 	const textNode = document.createTextNode(` ${selectedSound.name}`);
 	label.appendChild(textNode);
@@ -247,18 +247,18 @@ function toggleSound(soundId) {
 		const checkbox = document.getElementById(soundId);
 
 		if (checkbox.checked) {
-			// Létrehozunk egy új AudioBufferSourceNode-ot
+
 			const source = audioContext.createBufferSource();
 			source.buffer = audioData.buffer;
 			source.connect(audioData.gain);
 			source.loop = true;
 			source.start();
 
-			// Mentsük el a mostani source referenciát az audioData objektumban
+
 			audioData.source = source;
 
 		} else {
-			// Ha a checkbox nincs bepipálva és van egy aktív forrás, akkor azt megállítjuk
+
 			if (audioData.source) {
 				audioData.source.stop();
 				audioData.source.disconnect(audioData.gain);
@@ -288,7 +288,7 @@ function stopAllSounds() {
 		document.getElementById(sound).checked = false;
 	}
 
-	// Leállítja a háttérzajt és visszaállítja a kezdeti állapotba
+
 	const audio = document.getElementById('audioElement');
 	audio.pause();
 	audio.currentTime = 0;
@@ -298,13 +298,13 @@ function adjustEqualizer(type) {
 	const value = document.getElementById(type).value;
 	switch (type) {
 		case 'bass':
-			bassEQ.gain.value = (value - 1) * 40; // -40 to +40 dB range
+			bassEQ.gain.value = (value - 1) * 40;
 			break;
 		case 'mid':
-			midEQ.gain.value = (value - 1) * 15; // -15 to +15 dB range
+			midEQ.gain.value = (value - 1) * 15;
 			break;
 		case 'treble':
-			trebleEQ.gain.value = (value - 1) * 40; // -40 to +40 dB range
+			trebleEQ.gain.value = (value - 1) * 40;
 			break;
 	}
 }
@@ -392,10 +392,10 @@ function setBackground() {
 	document.body.style.backgroundImage = `url('image/${selectedBackground}.jpg')`;
 }
 
-// Az oldal betöltésekor beállítja az alapértelmezett háttérképet
+
 window.onload = setBackground;
 
-// Eseményhallgatót ad a legördülő menü változásához
+
 document.getElementById('backgroundSelector').addEventListener('change', setBackground);
 
 
@@ -404,13 +404,13 @@ document.getElementById('setAlarm').addEventListener('click', function () {
 	let inputTime = document.getElementById('alarmTime').value.split(":");
 	let alarmTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), parseInt(inputTime[0]), parseInt(inputTime[1]));
 
-	// Ellenőrizze, hogy a beállított időpont a jövőben van-e
+
 	if (alarmTime <= currentTime) {
 		alert('A beállított időpontnak a jövőben kell lennie!');
-		return; // Kilépünk a függvényből, így az ébresztő nem lesz beállítva
+		return;
 	}
 
-	if (alarmInterval) { // Ha már van beállított ébresztő, akkor töröljük azt
+	if (alarmInterval) {
 		clearInterval(alarmInterval);
 	}
 
@@ -423,7 +423,6 @@ document.getElementById('setAlarm').addEventListener('click', function () {
 		}
 	}, 10 * 1000);
 });
-
 
 document.getElementById('stopAlarm').addEventListener('click', function () {
 	try {
@@ -450,13 +449,13 @@ document.getElementById('stopAlarmFromModal').addEventListener('click', function
 		clearInterval(alarmInterval);
 		alarmInterval = null;
 	}
-	$('#alarmModal').modal('hide'); // Modal elrejtése
+	$('#alarmModal').modal('hide');
 });
 
 document.getElementById('playbackRate').addEventListener('input', function () {
 	let rate = parseFloat(this.value);
 
-	// Az összes audioSource playbackRate-jének módosítása
+
 	for (const sound in sounds) {
 		if (sounds[sound].source) {
 			sounds[sound].source.playbackRate.value = rate;
@@ -474,15 +473,5 @@ function startAutoMix() {
 		const randomSound = soundLibrary[Math.floor(Math.random() * soundLibrary.length)];
 		document.getElementById('backgroundNoise').value = randomSound.id;
 		document.getElementById('backgroundNoise').dispatchEvent(new Event('change'));
-	}, 30000); // 30 másodpercenként váltja a hangokat.
+	}, 30000);
 }
-
-// if ('serviceWorker' in navigator) {
-// 	navigator.serviceWorker.register('/service-worker.js')
-// 		.then(function (registration) {
-// 			console.log('Service Worker regisztrálva a következő hatókörrel:', registration.scope);
-// 		})
-// 		.catch(function (error) {
-// 			console.log('Service Worker regisztráció sikertelen:', error);
-// 		});
-// }

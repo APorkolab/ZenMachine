@@ -4,42 +4,38 @@
 .dark-mode .container {
 	background-color: #333 !important;
 	color: #fff !important;
-	opacity: 0.9;
+	opacity: .9
 }
 
 .dark-mode a {
-	color: #a0a0a0;
-	/* Például egy eltérő színű link sötét módban */
+	color: #a0a0a0
 }
 
 .equal-width-btn {
 	width: 30%;
-	/* Ezzel állítjuk be az azonos szélességet a gomboknak és a választómezőnek */
-	margin: 0 1%;
-	/* Ezzel adjuk hozzá a margót az elemek közé */
+	margin: 0 1%
 }
 
 .smaller-select {
-	width: 25%;
-	/* Ezzel csökkentjük a választómező szélességét */
+	width: 25%
 }
 
 body,
 html {
-	height: 100%;
+	height: 100%
 }
 
 body {
 	background-size: cover;
 	background-repeat: no-repeat;
-	background-position: center center;
+	background-position: center center
 }
 
 .page-wrapper {
-	flex: 1 0 auto;
+	flex: 1 0 auto
 }
 
 .container {
-	background: rgba(255, 255, 255, 0.7);
-	border-radius: 40%;
+	background: #ffffffb3;
+	border-radius: 40%
 }
