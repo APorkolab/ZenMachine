@@ -1,5 +1,15 @@
 # Zen Machine
 
+<p align="center">
+    <a href="https://www.typescriptlang.org/"><img height="20" src="https://img.shields.io/badge/built_with-HTML-orange.svg?logo=html5" alt="Built with HTML"></a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/CSS"><img height="20" src="https://img.shields.io/badge/built_with-CSS-blue.svg?logo=css3" alt="Built with CSS"></a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"><img height="20" src="https://img.shields.io/badge/built_with-JavaScript-yellow.svg?logo=javascript" alt="Built with JavaScript"></a>
+    <a href="https://getbootstrap.com/"><img height="20" src="https://img.shields.io/badge/built_with-Bootstrap-7952b3.svg?logo=bootstrap" alt="Built with Bootstrap"></a>
+    <a href="https://jquery.com/"><img height="20" src="https://img.shields.io/badge/built_with-jQuery-0769AD.svg?logo=jquery" alt="Built with jQuery"></a>
+    <a href="https://code.visualstudio.com/"><img height="20" src="https://img.shields.io/badge/developed_in-VS_Code-007acc.svg?logo=visual-studio-code" alt="Developed in VS Code"></a>
+    <a href="./LICENSE"><img height="20" src="https://img.shields.io/badge/license-Creative_Commons-blue.svg?logo=creative-commons" alt="License"></a>
+</p>
+
 Zen Machine is an advanced web-based audio relaxation tool. It allows users to craft their own serene environment by combining a variety of sounds and tunes. With a plethora of features, Zen Machine aims to provide a comprehensive and customizable audio experience.
 
 The author of this project is [Adam Dr. Porkolab (Mr. ProKey)](www.prokey.dev).
