@@ -1,97 +1,13 @@
-var audioContext = new AudioContext();
-let soundCounter = 1;
+let audioContext;
+let gainNode;
+let bassEQ, midEQ, trebleEQ, panner;
+let soundCounter = 0;
 const sounds = {};
 let alarmInterval;
-let lastPlayedTrack = null;
-let gainNode;
-let alarmSound = new Audio('/mp3/alarm.mp3');
-let autoMixInterval;
-
-let bassEQ = new BiquadFilterNode(audioContext, {
-	type: 'lowshelf',
-	frequency: 150,
-	gain: 0
-});
-
-let midEQ = new BiquadFilterNode(audioContext, {
-	type: 'peaking',
-	frequency: 1000,
-	gain: 0
-});
-
-let trebleEQ = new BiquadFilterNode(audioContext, {
-	type: 'highshelf',
-	frequency: 3000,
-	gain: 0
-});
-
-let panner = new StereoPannerNode(audioContext, {
-	pan: 0
-});
-
-
-const defaultSettings = {
-	bass: 0,
-	mid: 0,
-	treble: 0,
-	pan: 0,
-	playbackRate: 1
-};
-
-async function loadAudioBuffer(url) {
-	const response = await fetch(url);
-	const arrayBuffer = await response.arrayBuffer();
-	const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-	return audioBuffer;
-}
-
-function initializeAudioContext() {
-	if (!audioContext) {
-		audioContext = new(window.AudioContext || window.webkitAudioContext)();
-
-		gainNode = audioContext.createGain();
-
-
-		bassEQ = audioContext.createBiquadFilter();
-		midEQ = audioContext.createBiquadFilter();
-		trebleEQ = audioContext.createBiquadFilter();
-		panner = audioContext.createPanner();
-		gainNode.connect(audioContext.destination);
-
-		bassEQ.type = "lowshelf";
-		bassEQ.frequency.value = 150;
-		bassEQ.gain.value = 0;
-
-		midEQ.type = "peaking";
-		midEQ.frequency.value = 1000;
-		midEQ.gain.value = 0;
-
-		trebleEQ.type = "highshelf";
-		trebleEQ.frequency.value = 3000;
-		trebleEQ.gain.value = 0;
-
-		gainNode.connect(bassEQ);
-		bassEQ.connect(midEQ);
-		midEQ.connect(trebleEQ);
-		trebleEQ.connect(panner);
-		panner.connect(audioContext.destination);
-	}
-}
-
-document.addEventListener('click', function () {
-	initializeAudioContext();
-
-	if (audioContext.state === 'suspended') {
-		audioContext.resume().then(() => {
-			console.log('AudioContext successfully resumed!');
-		}).catch((error) => {
-			console.error('Failed to resume AudioContext:', error);
-		});
-	}
-
-});
-
 let isLooping = false;
+let timerTimeout;
+let alarmSound = new Audio('/mp3/alarm.mp3');
+let isPaused = false;
 
 const musicLibrary = [{
 		path: '/mp3/awakening.mp3',
@@ -124,99 +40,113 @@ const soundLibrary = [{
 	}
 ];
 
-function populateSelectOptions() {
-	const selectElement = document.getElementById('backgroundNoise');
+function initializeAudioContext() {
+	if (!audioContext) {
+		audioContext = new(window.AudioContext || window.webkitAudioContext)();
+		masterGainNode = audioContext.createGain();
 
-	soundLibrary.forEach(sound => {
-		let option = document.createElement('option');
-		option.value = sound.id;
-		option.textContent = sound.name;
-		selectElement.appendChild(option);
-	});
+		bassEQ = new BiquadFilterNode(audioContext, {
+			type: 'lowshelf',
+			frequency: 150,
+			gain: 0
+		});
+		midEQ = new BiquadFilterNode(audioContext, {
+			type: 'peaking',
+			frequency: 1000,
+			gain: 0
+		});
+		trebleEQ = new BiquadFilterNode(audioContext, {
+			type: 'highshelf',
+			frequency: 3000,
+			gain: 0
+		});
+		panner = new StereoPannerNode(audioContext, {
+			pan: 0
+		});
+
+		masterGainNode.connect(bassEQ);
+		bassEQ.connect(midEQ);
+		midEQ.connect(trebleEQ);
+		trebleEQ.connect(panner);
+		panner.connect(audioContext.destination);
+	}
 }
 
-
-document.getElementById('toggleAudio').addEventListener('click', function () {
-	const audio = document.getElementById('audioElement');
-
-	if (audio.paused) {
-		audio.play();
-	} else {
-		audio.pause();
+async function loadAudioBuffer(url) {
+	try {
+		const response = await fetch(url);
+		const arrayBuffer = await response.arrayBuffer();
+		return await audioContext.decodeAudioData(arrayBuffer);
+	} catch (error) {
+		console.error('Error loading audio buffer:', error);
+		alert('Nem sikerült betölteni a hangfájlt.');
+		return null;
 	}
-});
-
-document.getElementById('volumeControl').addEventListener('input', function () {
-	const audio = document.getElementById('audioElement');
-	audio.volume = this.value;
-});
-
-document.getElementById('backgroundNoise').addEventListener('change', function () {
-	let selectedNoiseId = this.value;
-	let audio = document.getElementById('audioElement');
-	let selectedSound = soundLibrary.find(sound => sound.id === selectedNoiseId);
-
-	if (selectedSound) {
-		audio.src = selectedSound.path;
-		audio.play();
-	}
-});
-
-populateSelectOptions();
-
-
-let currentIndex = 0;
-
-function getNextSound() {
-	const selectedSound = musicLibrary[currentIndex];
-	currentIndex = (currentIndex + 1) % musicLibrary.length;
-	return selectedSound;
 }
 
 async function addNewSound() {
-	soundCounter++;
-	if (audioContext.state === 'suspended') {
-		audioContext.resume();
-	}
-
 	initializeAudioContext();
 
-	const selectedSound = getNextSound();
+	soundCounter++;
+	const selectedAudioPath = document.getElementById('audioLibrary').value;
+	if (!selectedAudioPath) {
+		alert('Válassz egy hangot vagy zenét!');
+		return;
+	}
 
-	const soundBuffer = await loadAudioBuffer(selectedSound.path);
+	const soundBuffer = await loadAudioBuffer(selectedAudioPath);
+	if (!soundBuffer) return;
+
 	const audioSource = audioContext.createBufferSource();
 	audioSource.buffer = soundBuffer;
+	audioSource.loop = isLooping;
 
-	const gainNode = audioContext.createGain();
+	const individualGainNode = audioContext.createGain();
+	individualGainNode.gain.value = 0.5;
 
-	audioSource.connect(gainNode);
-	gainNode.connect(bassEQ);
-	bassEQ.connect(midEQ);
-	midEQ.connect(trebleEQ);
-	trebleEQ.connect(panner);
-	panner.connect(audioContext.destination);
-
+	audioSource.connect(individualGainNode);
+	individualGainNode.connect(masterGainNode);
 	audioSource.start();
-	audioSource.loop = true;
 
 	sounds[`sound${soundCounter}`] = {
 		buffer: soundBuffer,
 		source: audioSource,
-		gain: gainNode
+		gain: individualGainNode
 	};
 
+	const selectedAudioName = document.querySelector(`#audioLibrary option[value="${selectedAudioPath}"]`).textContent;
+	addSoundControlsToUI(selectedAudioName, soundCounter);
+}
 
+function populateAudioLibrary(type) {
+	const selectElement = document.getElementById('audioLibrary');
+	selectElement.innerHTML = '<option value="" disabled selected>Válassz egy hangot vagy zenét...</option>';
+
+	let library = type === 'music' ? musicLibrary : soundLibrary;
+
+	library.forEach(audio => {
+		let option = document.createElement('option');
+		option.value = audio.path;
+		option.textContent = audio.name;
+		selectElement.appendChild(option);
+	});
+}
+
+document.getElementById('soundOrMusicSelector').addEventListener('change', (event) => {
+	populateAudioLibrary(event.target.value);
+});
+
+function addSoundControlsToUI(name, counter) {
 	const soundDiv = document.createElement('div');
 	soundDiv.className = 'sound';
 
 	const label = document.createElement('label');
 	const checkbox = document.createElement('input');
 	checkbox.type = 'checkbox';
-	checkbox.id = `sound${soundCounter}`;
+	checkbox.id = `sound${counter}`;
 	checkbox.checked = true;
 	label.appendChild(checkbox);
-	const textNode = document.createTextNode(` ${selectedSound.name}`);
-	label.appendChild(textNode);
+	label.appendChild(document.createTextNode(` ${name}`));
 	soundDiv.appendChild(label);
 
 	const volumeSlider = document.createElement('input');
@@ -224,74 +154,44 @@ async function addNewSound() {
 	volumeSlider.min = '0';
 	volumeSlider.max = '1';
 	volumeSlider.step = '0.01';
-	volumeSlider.id = `volume${soundCounter}`;
-	volumeSlider.oninput = (function (currentCounter) {
-		return function () {
-			adjustVolume(`sound${currentCounter}`);
-		};
-	})(soundCounter);
+	volumeSlider.id = `volume${counter}`;
 	volumeSlider.value = '0.5';
+	volumeSlider.addEventListener('input', () => adjustVolume(counter));
 	soundDiv.appendChild(volumeSlider);
 
 	document.getElementById('soundsContainer').appendChild(soundDiv);
 
-	const currentSoundId = `sound${soundCounter}`;
-	checkbox.onclick = function () {
-		toggleSound(currentSoundId);
-	};
+	checkbox.addEventListener('change', () => toggleSound(`sound${counter}`));
 }
 
 function toggleSound(soundId) {
-	audioContext.resume().then(() => {
-		const audioData = sounds[soundId];
-		const checkbox = document.getElementById(soundId);
+	const sound = sounds[soundId];
+	const checkbox = document.getElementById(soundId);
 
-		if (checkbox.checked) {
-
+	if (checkbox.checked) {
+		if (!sound.source) {
 			const source = audioContext.createBufferSource();
-			source.buffer = audioData.buffer;
-			source.connect(audioData.gain);
-			source.loop = true;
+			source.buffer = sound.buffer;
+			source.loop = isLooping;
+			source.connect(sound.gain);
+			sound.gain.connect(masterGainNode);
 			source.start();
-
-
-			audioData.source = source;
-
-		} else {
-
-			if (audioData.source) {
-				audioData.source.stop();
-				audioData.source.disconnect(audioData.gain);
-				audioData.source = null;
-			}
+			sound.source = source;
 		}
-	}).catch((error) => {
-		console.error('Failed to resume AudioContext:', error);
-	});
+	} else if (sound.source) {
+		sound.source.stop();
+		sound.source.disconnect();
+		sound.source = null;
+	}
 }
 
 function adjustVolume(soundId) {
-	const volumeSlider = document.getElementById(soundId.replace('sound', 'volume'));
-	if (sounds[soundId] && sounds[soundId].gain) {
-		sounds[soundId].gain.gain.value = parseFloat(volumeSlider.value);
+	const volumeSlider = document.getElementById(`volume${soundId}`);
+	if (sounds[`sound${soundId}`]) {
+		sounds[`sound${soundId}`].gain.gain.value = parseFloat(volumeSlider.value);
 	} else {
-		console.error(`Sound with ID ${soundId} not found!`);
+		console.error(`Sound with ID sound${soundId} not found!`);
 	}
-}
-
-function stopAllSounds() {
-	for (const sound in sounds) {
-		if (sounds[sound].source) {
-			sounds[sound].source.stop();
-			sounds[sound].source = null;
-		}
-		document.getElementById(sound).checked = false;
-	}
-
-
-	const audio = document.getElementById('audioElement');
-	audio.pause();
-	audio.currentTime = 0;
 }
 
 function adjustEqualizer(type) {
@@ -317,7 +217,106 @@ function adjustPan() {
 function adjustPlaybackRate() {
 	const rate = document.getElementById('playbackRate').value;
 	for (const sound in sounds) {
-		sounds[sound].playbackRate = rate;
+		if (sounds[sound].source) {
+			sounds[sound].source.playbackRate.value = rate;
+		}
+	}
+	document.getElementById('currentRate').textContent = rate + 'x';
+}
+
+function setTimer() {
+	const minutes = parseInt(document.getElementById('timerValue').value);
+	if (isNaN(minutes) || minutes <= 0) {
+		alert('Adj meg egy érvényes időtartamot percekben!');
+		return;
+	}
+
+	if (timerTimeout) {
+		clearTimeout(timerTimeout);
+	}
+
+	const duration = minutes * 60 * 1000;
+	timerTimeout = setTimeout(stopAllSounds, duration);
+	alert(`${minutes} perc múlva az összes hang leáll!`);
+}
+
+function setAlarm() {
+	const currentTime = new Date();
+	const inputTime = document.getElementById('alarmTime').value.split(":");
+	if (!inputTime || inputTime.length !== 2) {
+		alert('Érvényes időpontot kell megadni!');
+		return;
+	}
+	const alarmTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), parseInt(inputTime[0]), parseInt(inputTime[1]));
+
+	if (alarmTime <= currentTime) {
+		alert('A beállított időpontnak a jövőben kell lennie!');
+		return;
+	}
+
+	if (alarmInterval) {
+		clearInterval(alarmInterval);
+	}
+
+	alarmInterval = setInterval(() => {
+		const now = new Date();
+		if (now >= alarmTime) {
+			alarmSound.play();
+			$('#alarmModal').modal('show');
+			clearInterval(alarmInterval);
+		}
+	}, 1000);
+}
+
+function stopAlarm() {
+	if (alarmSound && !alarmSound.paused) {
+		alarmSound.pause();
+		alarmSound.currentTime = 0;
+	}
+	if (alarmInterval) {
+		clearInterval(alarmInterval);
+		alarmInterval = null;
+	}
+	$('#alarmModal').modal('hide');
+}
+
+function stopAllSounds() {
+	const stopAllButton = document.getElementById('stopAllSounds');
+
+	if (!isPaused) {
+		for (const soundId in sounds) {
+			if (sounds[soundId].source) {
+				sounds[soundId].source.stop();
+				sounds[soundId].source.disconnect();
+				sounds[soundId].source = null;
+			}
+		}
+		isPaused = true;
+		stopAllButton.textContent = "Összes hang újraindítása";
+	} else {
+		for (const soundId in sounds) {
+			if (!sounds[soundId].source) {
+				const source = audioContext.createBufferSource();
+				source.buffer = sounds[soundId].buffer;
+				source.loop = isLooping;
+				source.connect(sounds[soundId].gain);
+				source.start();
+				sounds[soundId].source = source;
+			}
+		}
+		isPaused = false;
+		stopAllButton.textContent = "Összes hang stop";
+	}
+}
+
+function toggleLoop() {
+	isLooping = !isLooping;
+	document.getElementById('loopStatus').textContent = isLooping ? 'BE' : 'KI';
+
+	for (const soundId in sounds) {
+		if (sounds[soundId].source) {
+			sounds[soundId].source.loop = isLooping;
+		}
 	}
 }
 
@@ -350,128 +349,74 @@ function loadSettings() {
 	}
 }
 
-function resumeAudioContext() {
-	if (audioContext.state === 'suspended') {
-		return audioContext.resume();
-	}
-	return Promise.resolve();
-}
-
-
-function randomizeSounds() {
-	const soundKeys = Object.keys(sounds);
-	soundKeys.forEach(key => {
-		const randomVolume = Math.random();
-		sounds[key].volume = randomVolume;
-	});
-	alert('Véletlenszerű hangok beállítva!');
-}
-
-function toggleLoop() {
-	isLooping = !isLooping;
-	for (const sound in sounds) {
-		sounds[sound].loop = isLooping;
-	}
-	document.getElementById('loopStatus').textContent = isLooping ? 'BE' : 'KI';
-}
-
-document.getElementById('toggleDarkMode').addEventListener('click', function () {
-	document.body.classList.toggle('dark-mode');
-});
-
-document.getElementById('setTimer').addEventListener('click', function () {
-	let minutes = document.getElementById('timerValue').value;
-	setTimeout(function () {
-		stopAllSounds();
-		alert('Az időzítő lejárt és az összes hangot megállítottam!');
-	}, minutes * 60 * 1000);
-});
-
 function setBackground() {
-	let selectedBackground = document.getElementById('backgroundSelector').value;
+	const selectedBackground = document.getElementById('backgroundSelector').value;
 	document.body.style.backgroundImage = `url('image/${selectedBackground}.jpg')`;
 }
 
+function adjustMasterVolume() {
+	const volumeSlider = document.getElementById('volumeControl');
+	const volume = parseFloat(volumeSlider.value);
+	masterGainNode.gain.value = volume;
 
-window.onload = setBackground;
-
-
-document.getElementById('backgroundSelector').addEventListener('change', setBackground);
-
-
-document.getElementById('setAlarm').addEventListener('click', function () {
-	let currentTime = new Date();
-	let inputTime = document.getElementById('alarmTime').value.split(":");
-	let alarmTime = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate(), parseInt(inputTime[0]), parseInt(inputTime[1]));
-
-
-	if (alarmTime <= currentTime) {
-		alert('A beállított időpontnak a jövőben kell lennie!');
-		return;
-	}
-
-	if (alarmInterval) {
-		clearInterval(alarmInterval);
-	}
-
-	alarmInterval = setInterval(function () {
-		let now = new Date();
-		if (now >= alarmTime) {
-			alarmSound.play();
-			$('#alarmModal').modal('show');
-			clearInterval(alarmInterval);
-		}
-	}, 10 * 1000);
-});
-
-document.getElementById('stopAlarm').addEventListener('click', function () {
-	try {
-		if (alarmSound && !alarmSound.paused) {
-			alarmSound.pause();
-			alarmSound.currentTime = 0;
-		}
-
-		if (alarmInterval) {
-			clearInterval(alarmInterval);
-			alarmInterval = null;
-		}
-	} catch (error) {
-		console.error('Hiba:', error);
-	}
-});
-
-document.getElementById('stopAlarmFromModal').addEventListener('click', function () {
-	if (alarmSound) {
-		alarmSound.pause();
-		alarmSound.currentTime = 0;
-	}
-	if (alarmInterval) {
-		clearInterval(alarmInterval);
-		alarmInterval = null;
-	}
-	$('#alarmModal').modal('hide');
-});
-
-document.getElementById('playbackRate').addEventListener('input', function () {
-	let rate = parseFloat(this.value);
-
-
-	for (const sound in sounds) {
-		if (sounds[sound].source) {
-			sounds[sound].source.playbackRate.value = rate;
-		}
-	}
-
-	document.getElementById('currentRate').textContent = rate + 'x';
-});
-
-function startAutoMix() {
-	if (autoMixInterval) {
-		clearInterval(autoMixInterval);
-	}
-	autoMixInterval = setInterval(() => {
-		const randomSound = soundLibrary[Math.floor(Math.random() * soundLibrary.length)];
-		document.getElementById('backgroundNoise').value = randomSound.id;
-		document.getElementById('backgroundNoise').dispatchEvent(new Event('change'));
-	}, 30000);
+	document.getElementById('volumeValue').textContent = `${Math.round(volume * 100)}%`;
 }
+
+window.onload = function () {
+	initializeAudioContext();
+	populateSelectOptions();
+	loadSettings();
+	setBackground();
+
+	document.getElementById('setAlarm').addEventListener('click', setAlarm);
+	document.getElementById('stopAlarm').addEventListener('click', stopAlarm);
+	document.getElementById('stopAlarmFromModal').addEventListener('click', stopAlarm);
+
+	document.getElementById('saveSettings').addEventListener('click', saveSettings);
+	document.getElementById('loadSettings').addEventListener('click', loadSettings);
+	document.getElementById('randomizeSounds').addEventListener('click', randomizeSounds);
+	document.getElementById('toggleLoop').addEventListener('click', toggleLoop);
+
+	document.getElementById('pan').addEventListener('input', adjustPan);
+	document.getElementById('addNewAudio').addEventListener('click', addNewSound);
+	document.getElementById('stopAllSounds').addEventListener('click', stopAllSounds);
+	document.getElementById('volumeControl').addEventListener('input', adjustMasterVolume);
+	document.getElementById('toggleDarkMode').addEventListener('click', function () {
+		const bodyElement = document.body;
+		bodyElement.classList.toggle('dark-mode');
+
+		const darkModeEnabled = bodyElement.classList.contains('dark-mode');
+		this.textContent = darkModeEnabled ? 'Sötét Mód Ki' : 'Sötét Mód Be';
+	});
+
+};
+
+function randomizeSettings() {
+	const randomBass = Math.random() * 2;
+	const randomMid = Math.random() * 2;
+	const randomTreble = Math.random() * 2;
+	const randomPan = (Math.random() * 2) - 1;
+	const randomPlaybackRate = (Math.random() * 1.5) + 0.5;
+
+	document.getElementById('bass').value = randomBass;
+	document.getElementById('mid').value = randomMid;
+	document.getElementById('treble').value = randomTreble;
+	document.getElementById('pan').value = randomPan;
+	document.getElementById('playbackRate').value = randomPlaybackRate;
+
+	adjustEqualizer('bass');
+	adjustEqualizer('mid');
+	adjustEqualizer('treble');
+	adjustPan();
+	adjustPlaybackRate();
+
+	console.log(`Randomized settings: Bass: ${randomBass}, Mid: ${randomMid}, Treble: ${randomTreble}, Pan: ${randomPan}, Playback Rate: ${randomPlaybackRate}`);
+}
+
+document.getElementById('randomizeSounds').addEventListener('click', randomizeSettings);
+
+function populateSelectOptions() {
+	populateAudioLibrary('music');
+}
+
+populateSelectOptions();

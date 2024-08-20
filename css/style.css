@@ -1,3 +1,67 @@
+@import "https://fonts.googleapis.com/css2?family=Ga+Maamli&family=Jersey+10&display=swap";
+
+body {
+	background-color: #f0f0f0;
+	color: #333;
+	font-family: "Jersey 10", system-ui;
+	font-weight: 400;
+	font-style: normal
+}
+
+.dark-mode {
+	background-color: #121212;
+	color: #fff
+}
+
+.dark-mode .btn {
+	background-color: #fff;
+	color: #121212
+}
+
+.dark-mode .custom-select,
+.dark-mode .form-control {
+	background-color: #343a40;
+	color: #fff
+}
+
+.dark-mode .custom-range {
+	background-color: #fff
+}
+
+.footer-card {
+	color: #000;
+	padding: 2rem;
+	border-radius: 8px;
+	text-align: center;
+	margin: 2.5rem
+}
+
+.footer-card h2 {
+	font-size: 1.8rem;
+	margin-bottom: 10px
+}
+
+.footer-card a {
+	color: #0af;
+	text-decoration: none;
+	font-weight: 700;
+	transition: color .3s ease
+}
+
+.footer-card a:hover {
+	color: #09c
+}
+
+@media (max-width: 768px) {
+	.footer-card h2 {
+		font-size: 1.5rem
+	}
+
+	.footer-card a {
+		font-size: 1rem
+	}
+}
+
 .dark-mode,
 .dark-mode a,
 .dark-mode button,
@@ -26,9 +90,7 @@ html {
 }
 
 body {
-	background-size: cover;
-	background-repeat: no-repeat;
-	background-position: center center
+	background-size: cover
 }
 
 .page-wrapper {
@@ -38,4 +100,198 @@ body {
 .container {
 	background: #ffffffb3;
 	border-radius: 40%
+}
+
+.footer-card {
+	color: #000;
+	padding: 2rem;
+	border-radius: 8px;
+	text-align: center;
+	margin: 2.5rem
+}
+
+.footer-card div {
+	font-family: 'Courier New', monospace;
+	background: #1F1C2C;
+	padding: 30px;
+	border-radius: 20px;
+	color: #EDEDED;
+	text-shadow: 2px 2px 4px #000;
+	margin: auto;
+	box-shadow: 0 10px 20px #0000004d;
+	transform: skewY(-2deg) rotate(-1deg);
+	overflow: hidden
+}
+
+.footer-card div div {
+	text-align: center;
+	transform: skewY(2deg) rotate(1deg)
+}
+
+.footer-card h1 {
+	font-size: 28px;
+	margin: 0;
+	color: #FFD700;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	font-family: "Ga Maamli", system-ui;
+	font-weight: 400;
+	font-style: normal
+}
+
+.footer-card h2 {
+	font-size: 1.8rem;
+	margin-bottom: 10px
+}
+
+.contact-info {
+	font-family: 'Courier New', monospace;
+	background: #1F1C2C;
+	padding: 30px;
+	border-radius: 20px;
+	color: #EDEDED;
+	text-shadow: 2px 2px 4px #000;
+	margin: auto;
+	box-shadow: 0 10px 20px #0000004d;
+	transform: skewY(-2deg) rotate(-1deg);
+	overflow: hidden;
+	text-align: center
+}
+
+.contact-info h1 {
+	font-size: 28px;
+	margin: 0;
+	color: #FFD700;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+	font-weight: 700
+}
+
+.contact-info p {
+	font-size: 16px;
+	margin: 10px 0;
+	color: #FF4081;
+	text-transform: uppercase;
+	font-style: italic
+}
+
+.contact-links {
+	display: flex;
+	justify-content: space-around;
+	margin-top: 20px;
+	flex-wrap: wrap
+}
+
+.contact-links a {
+	color: #FFD700;
+	text-decoration: none;
+	font-size: 14px;
+	border: 2px dashed #FF4081;
+	padding: 10px;
+	margin: 5px;
+	transform: skewX(-5deg);
+	max-width: 150px;
+	overflow-wrap: break-word
+}
+
+.contact-links a:hover {
+	color: #09c
+}
+
+@media (max-width: 576px) {
+	.contact-info {
+		padding: 20px
+	}
+
+	.contact-links {
+		align-items: center
+	}
+
+	.contact-links a {
+		width: 100%;
+		max-width: 200px;
+		text-align: center;
+		margin: 10px 0
+	}
+
+	.contact-info h1 {
+		font-size: 22px
+	}
+
+	.contact-info p {
+		font-size: 14px
+	}
+}
+
+.footer-card p {
+	font-size: 16px;
+	margin: 10px 0;
+	color: #FF4081;
+	text-transform: uppercase;
+	font-style: italic
+}
+
+.footer-card a {
+	color: #FFD700;
+	text-decoration: none;
+	font-size: 14px;
+	border: 2px dashed #FF4081;
+	padding: 10px;
+	margin: 5px;
+	transform: skewX(-5deg);
+	max-width: 150px;
+	overflow-wrap: break-word
+}
+
+.footer-card a:hover {
+	color: #09c
+}
+
+.dark-mode input[type="range"] {
+	background-color: #555;
+	border-radius: 5px
+}
+
+.dark-mode input[type="range"]::-webkit-slider-thumb {
+	background-color: #fff;
+	border: 2px solid #333
+}
+
+.dark-mode input[type="range"]::-moz-range-thumb {
+	background-color: #fff;
+	border: 2px solid #333
+}
+
+.dark-mode input[type="range"]::-ms-thumb {
+	background-color: #fff;
+	border: 2px solid #333
+}
+
+.dark-mode .footer-card h2 {
+	color: #fff
+}
+
+.dark-mode .footer-card {
+	background-color: #1c1c1c;
+	border: 1px solid #333;
+	color: #fff;
+	box-shadow: 0 5px 15px #000000b3
+}
+
+.dark-mode .footer-card h1 {
+	color: #ff4081
+}
+
+.dark-mode .footer-card p {
+	color: #fc0
+}
+
+.dark-mode .footer-card .contact-links a {
+	color: #0af;
+	border-color: #0af
+}
+
+.dark-mode .footer-card .contact-links a:hover {
+	color: #fc0;
+	border-color: #fc0
 }
