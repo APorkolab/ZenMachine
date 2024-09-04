@@ -72,7 +72,7 @@ let storedTracks = [];
 
 async function fetchNewTracks() {
     try {
-        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=c1c492b0&format=json&limit=5&fuzzytags=ambient,calm&speed=verylow&include=musicinfo&order=releasedate_desc&vocalinstrumental=instrumental&audioformat=mp32`);
+        const response = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=c1c492b0&format=json&limit=10&fuzzytags=ambient,calm&speed=verylow&include=musicinfo&order=releasedate_desc&vocalinstrumental=instrumental&audioformat=mp32`);
         const data = await response.json();
         if (data.results && data.results.length > 0) {
             return data.results;
@@ -92,7 +92,7 @@ async function addNewSound() {
     if (selectedAudioPath === 'random') {
         if (storedTracks.length <= 1) {
             const newTracks = await fetchNewTracks();
-            storedTracks = [...storedTracks, ...newTracks];
+            storedTracks = newTracks; // Teljesen lecseréljük a tömb tartalmát
         }
 
         if (storedTracks.length > 0) {
