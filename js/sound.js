@@ -371,12 +371,12 @@ window.onload = function () {
 	document.getElementById('setAlarm').addEventListener('click', setAlarm);
 	document.getElementById('stopAlarm').addEventListener('click', stopAlarm);
 	document.getElementById('stopAlarmFromModal').addEventListener('click', stopAlarm);
-
+    document.getElementById('setTimer').addEventListener('click', setTimer);
 	document.getElementById('saveSettings').addEventListener('click', saveSettings);
 	document.getElementById('loadSettings').addEventListener('click', loadSettings);
 	document.getElementById('randomizeSounds').addEventListener('click', randomizeSounds);
 	document.getElementById('toggleLoop').addEventListener('click', toggleLoop);
-
+    document.getElementById('backgroundSelector').addEventListener('change', setBackground);
 	document.getElementById('pan').addEventListener('input', adjustPan);
 	document.getElementById('addNewAudio').addEventListener('click', addNewSound);
 	document.getElementById('stopAllSounds').addEventListener('click', stopAllSounds);
@@ -389,6 +389,8 @@ window.onload = function () {
 		this.textContent = darkModeEnabled ? 'Sötét Mód Ki' : 'Sötét Mód Be';
 	});
 
+	document.getElementById('setTimer').addEventListener('click', setTimer);
+	document.getElementById('backgroundSelector').addEventListener('change', setBackground);
 };
 
 function randomizeSettings() {
@@ -411,6 +413,15 @@ function randomizeSettings() {
 	adjustPlaybackRate();
 
 	console.log(`Randomized settings: Bass: ${randomBass}, Mid: ${randomMid}, Treble: ${randomTreble}, Pan: ${randomPan}, Playback Rate: ${randomPlaybackRate}`);
+}
+
+function randomizeSounds() {
+    // Véletlenszerűen válasszunk és játsszunk le hangokat
+    const availableSounds = [...musicLibrary, ...soundLibrary];
+    const randomSound = availableSounds[Math.floor(Math.random() * availableSounds.length)];
+    
+    document.getElementById('audioLibrary').value = randomSound.path;
+    addNewSound();
 }
 
 document.getElementById('randomizeSounds').addEventListener('click', randomizeSettings);
