@@ -18,43 +18,53 @@ The author of this project is [Adam Dr. Porkolab (Mr. ProKey)](https://www.adamp
 
 ### Sound Selection
 
-- Choose from a vast library of sounds and tunes.
+- Choose from a vast library of sounds and tunes, including predefined options and random selections from Jamendo.
 - Combine multiple sounds to create a unique mix.
+- **Random Music**: Option to load random ambient tracks from Jamendo API.
 
 ### Audio Controls
 
 - **Volume Control**: Adjust the volume for each individual sound or the master volume for the entire mix.
 - **Balance Control**: Adjust the stereo balance to focus sound on the left or right speaker.
-- **Equalizer**: Fine-tune your audio with a 10-band equalizer to get the perfect sound.
+- **Equalizer**: Fine-tune your audio with a 3-band equalizer (bass, mid, treble) to get the perfect sound.
 
 ### Playback Features
 
 - **Loop**: Set your favorite sounds to loop indefinitely.
-- **Auto-play**: Create a playlist and let the sounds play in sequence.
+- **Playback Rate**: Adjust the speed of playback for all sounds.
+- **Pause/Resume**: Ability to pause all sounds and resume playback.
 
 ### User Experience
 
-- **Offline Mode**: With the integration of Service Workers and Cache API, Zen Machine can be used even without an internet connection.
+- **Dark Mode**: Toggle between light and dark themes for comfortable viewing.
+- **Background Selection**: 
+  - Choose from predefined backgrounds (beach, forest).
+  - Get a random image from Picsum Photos.
+  - Option to change to a new random background at any time.
 - **Responsive Design**: Optimized for desktop, tablet, and mobile devices.
-- **Dark Mode**: For those late-night relaxation sessions.
 
 ### Additional Features
 
-- **Save and Load Presets**: Save your favorite combinations and load them anytime.
-- **Timer**: Set a timer to stop the playback after a certain duration, perfect for meditation or sleep.
+- **Save and Load Settings**: Save your favorite equalizer, pan, and playback rate settings and load them anytime.
+- **Timer**: Set a timer to stop the playback after a certain duration.
+- **Alarm**: Set an alarm to play a sound at a specific time.
+- **Randomize**: Randomly adjust audio settings and add new sounds for a surprise experience.
 
 ## 📦 Resources Used
 
 - **Bootstrap**: For a responsive and modern user interface.
-- **Service Workers & Cache API**: Ensuring offline functionality.
-- **Web Audio API**: Providing advanced audio controls.
+- **jQuery**: For easier DOM manipulation and event handling.
+- **Web Audio API**: Providing advanced audio controls and effects.
+- **Jamendo API**: For fetching random ambient tracks.
+- **Picsum Photos API**: For random background images.
 
 ## 🚀 Getting Started
 
 1. **Visit the Website**: Navigate to the Zen Machine website.
-2. **Select Your Sounds**: Use the provided buttons or checkboxes to choose your desired sounds.
-3. **Customize**: Use the various sliders and controls to adjust volume, balance, equalizer settings, and more.
-4. **Play**: Once you're satisfied with your setup, press the play button and immerse yourself in relaxation.
+2. **Select Your Sounds**: Use the provided dropdown to choose your desired sounds or music. You can also select "Random" to get a track from Jamendo.
+3. **Customize Background**: Choose a predefined background or select "Random" to get an image from Picsum Photos. Use the "New random background" button to change it anytime.
+4. **Adjust Settings**: Use the various sliders and controls to adjust volume, balance, equalizer settings, and more.
+5. **Play**: Once you're satisfied with your setup, enjoy your personalized relaxation experience.
 
 ## 🤝 Contributing
 
@@ -81,9 +91,11 @@ Image by <a href="https://pixabay.com/users/bertvthul-1134851/?utm_source=link-a
 ## Purple Planet
 
 - Password (https://www.purple-planet.com/tracks/passport)
-
 - Awakening (https://www.purple-planet.com/atmospheric)
-
 - Ethereal Eternity (https://www.purple-planet.com/atmospheric)
-
 - Piano at Night (https://www.purple-planet.com/atmospheric)
+
+## Additional APIs
+
+- Jamendo API: Used for fetching random ambient tracks.
+- Picsum Photos API: Used for random background images.
