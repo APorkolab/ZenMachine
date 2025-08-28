@@ -1,0 +1,141 @@
+<div class="container">
+  <mat-card class="visualizer-card">
+    <mat-card-content>
+      <app-preset-manager></app-preset-manager>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="visualizer-card">
+    <mat-card-content>
+      <app-visualizer></app-visualizer>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Sound Selection</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="sound-selector">
+      <mat-form-field>
+        <mat-label>Select a Sound</mat-label>
+        <mat-select [(ngModel)]="selectedSoundPath">
+          @for (sound of sounds; track sound.path) {
+            <mat-option [value]="sound.path">{{ sound.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button mat-fab color="primary" (click)="addSound()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Active Sounds</mat-card-title>
+    </mat-card-header>
+    <mat-card-content cdkDropList class="active-sounds" (cdkDropListDropped)="drop($event)">
+      @for (sound of activeSounds$ | async; track sound.id) {
+        <div class="active-sound" cdkDrag>
+          <mat-icon cdkDragHandle>drag_handle</mat-icon>
+          <span>{{ sound.name }}</span>
+          <mat-slider min="0" max="1" step="0.01" [value]="sound.volume">
+            <input matSliderThumb (input)="onSoundVolumeChange(sound.id, $event)">
+          </mat-slider>
+          <button mat-icon-button color="warn" (click)="stopSound(sound.id)">
+            <mat-icon>stop</mat-icon>
+          </button>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Master Controls</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="controls">
+      <div class="slider-container">
+        <label>Master Volume</label>
+        <mat-slider min="0" max="1" step="0.01" [value]="masterVolume$ | async">
+          <input matSliderThumb (input)="onMasterVolumeChange($event)">
+        </mat-slider>
+      </div>
+      <div class="slider-container">
+        <label>Pan</label>
+        <mat-slider min="-1" max="1" step="0.1" [value]="pan$ | async">
+          <input matSliderThumb (input)="onPanChange($event)">
+        </mat-slider>
+      </div>
+      <div class="slider-container">
+        <label>Playback Rate</label>
+        <mat-slider min="0.5" max="2" step="0.1" [(ngModel)]="playbackRate">
+          <input matSliderThumb (input)="onPlaybackRateChange($event)">
+        </mat-slider>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Equalizer</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="controls">
+      <div class="slider-container">
+        <label>Bass</label>
+        <mat-slider min="-10" max="10" step="0.1" [value]="bass$ | async">
+          <input matSliderThumb (input)="onEQChange('bass', $event)">
+        </mat-slider>
+      </div>
+      <div class="slider-container">
+        <label>Mid</label>
+        <mat-slider min="-10" max="10" step="0.1" [value]="mid$ | async">
+          <input matSliderThumb (input)="onEQChange('mid', $event)">
+        </mat-slider>
+      </div>
+      <div class="slider-container">
+        <label>Treble</label>
+        <mat-slider min="-10" max="10" step="0.1" [value]="treble$ | async">
+          <input matSliderThumb (input)="onEQChange('treble', $event)">
+        </mat-slider>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Advanced Controls</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="advanced-controls">
+      <div class="timer-alarm">
+        <mat-form-field>
+          <mat-label>Timer (minutes)</mat-label>
+          <input matInput type="number" [(ngModel)]="timerValue">
+        </mat-form-field>
+        <button mat-raised-button (click)="setTimer()">Set Timer</button>
+        <mat-form-field>
+          <mat-label>Alarm</mat-label>
+          <input matInput type="time" [(ngModel)]="alarmTime">
+        </mat-form-field>
+        <button mat-raised-button (click)="setAlarm()">Set Alarm</button>
+      </div>
+      <div class="other-controls">
+        <button mat-raised-button (click)="saveSettings()">Save Settings</button>
+        <button mat-raised-button (click)="loadSettings()">Load Settings</button>
+        <button mat-raised-button (click)="randomizeSettings()">Randomize Settings</button>
+        <button mat-raised-button (click)="randomizeSound()">Add Random Sound</button>
+        <button mat-raised-button color="warn" (click)="stopAllSounds()">Stop All Sounds</button>
+        <button mat-raised-button (click)="toggleLoop()">Loop: {{ isLooping ? 'On' : 'Off' }}</button>
+        <mat-slide-toggle [(ngModel)]="isDarkMode" (change)="toggleDarkMode()">Dark Mode</mat-slide-toggle>
+        <mat-form-field>
+          <mat-label>Background</mat-label>
+          <mat-select [(ngModel)]="selectedBackground" (selectionChange)="changeBackground()">
+            @for (bg of backgrounds; track bg.path) {
+              <mat-option [value]="bg.path">{{ bg.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

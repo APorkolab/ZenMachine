@@ -1,0 +1,28 @@
+<div class="preset-manager">
+  <h3>Presets</h3>
+  <div class="save-preset-form">
+    <mat-form-field>
+      <mat-label>New Preset Name</mat-label>
+      <input matInput [(ngModel)]="newPresetName">
+    </mat-form-field>
+    <button mat-raised-button color="primary" (click)="savePreset()" [disabled]="!newPresetName">
+      Save Preset
+    </button>
+  </div>
+
+  <mat-list>
+    @for (preset of presets$ | async; track preset.id) {
+      <mat-list-item>
+        <span matListItemTitle>{{ preset.name }}</span>
+        <div matListItemMeta>
+          <button mat-icon-button (click)="loadPreset(preset.id)">
+            <mat-icon>play_arrow</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deletePreset(preset.id)">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </mat-list-item>
+    }
+  </mat-list>
+</div>
