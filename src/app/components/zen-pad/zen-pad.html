@@ -7,7 +7,7 @@
 
   <mat-card class="visualizer-card">
     <mat-card-content>
-      <app-visualizer *ngIf="isBrowser"></app-visualizer>
+      <app-visualizer *ngIf="isBrowser && audioEnabled"></app-visualizer>
     </mat-card-content>
   </mat-card>
 

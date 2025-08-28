@@ -1,3 +1,4 @@
+// src/app/services/audio.ts
 import { moveItemInArray } from '@angular/cdk/drag-drop';
 import { isPlatformBrowser } from '@angular/common';
 import { inject, Injectable, PLATFORM_ID } from '@angular/core';
@@ -33,6 +34,7 @@ export class AudioService {
   private alarmInterval: any;
   private isLooping = false;
   private soundCounter = 0;
+  private canResume = false; // csak user-gesztus után igaz
 
   private activeSoundsSubject = new BehaviorSubject<ActiveSound[]>([]);
   public readonly activeSounds$ = this.activeSoundsSubject.asObservable();
@@ -86,19 +88,17 @@ export class AudioService {
     this.midEQ.gain.value = this.midSubject.value;
     this.trebleEQ.gain.value = this.trebleSubject.value;
 
-    // helyes assets útvonal (nincs leading "/")
+    // relatív útvonal; a fájlnak léteznie kell: src/assets/mp3/alarm.mp3
     this.alarmAudio = new Audio('assets/mp3/alarm.mp3');
     this.alarmAudio.load();
 
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
-    }
+    // NINCS automatikus resume itt – csak user-gesztusra!
   }
 
-  /** User-gesztusban hívd, ha “autoplay blocked” üzenet jön. */
+  /** KIZÁRÓLAG user-gesztusban hívd (gomb, katt). */
   unlock(): void {
-    if (!this.ctx) return;
-    if (this.ctx.state === 'suspended') {
+    this.canResume = true;
+    if (this.ctx?.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
   }
@@ -195,21 +195,21 @@ export class AudioService {
         this.bassSubject.next(value);
         if (this.isBrowser) {
           this.ensureCtx();
-          if (this.bassEQ) this.bassEQ.gain.value = value;
+          this.bassEQ && (this.bassEQ.gain.value = value);
         }
         break;
       case 'mid':
         this.midSubject.next(value);
         if (this.isBrowser) {
           this.ensureCtx();
-          if (this.midEQ) this.midEQ.gain.value = value;
+          this.midEQ && (this.midEQ.gain.value = value);
         }
         break;
       case 'treble':
         this.trebleSubject.next(value);
         if (this.isBrowser) {
           this.ensureCtx();
-          if (this.trebleEQ) this.trebleEQ.gain.value = value;
+          this.trebleEQ && (this.trebleEQ.gain.value = value);
         }
         break;
     }
@@ -280,7 +280,8 @@ export class AudioService {
   private ensureCtx(): AudioContext {
     if (!this.ctx) this.init();
     if (!this.ctx) throw new Error('Web Audio API not available (SSR/unsupported)');
-    if (this.ctx.state === 'suspended') {
+    // csak akkor resume, ha a felhasználó engedélyezte
+    if (this.canResume && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
     return this.ctx;

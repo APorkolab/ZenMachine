@@ -43,12 +43,11 @@ import { VisualizerComponent } from '../visualizer/visualizer';
   ],
 })
 export class ZenPad implements OnInit {
-  // publikus, hogy a template-ből hívható legyen
   public audioService = inject(AudioService);
   private apiService = inject(ApiService);
   public readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  public audioEnabled = false; // vizualizer guard
 
-  // Helyes assets útvonalak (nincs leading '/')
   sounds = [
     { name: 'Heavy Rain', path: 'assets/sounds/heavy-rain.mp3' },
     { name: 'Bells Tibetan Large', path: 'assets/sounds/bells-tibetan.mp3' },
@@ -90,10 +89,10 @@ export class ZenPad implements OnInit {
     this.changeBackground();
   }
 
-  /** Autoplay policy feloldása (gombhoz) */
   enableAudio() {
     this.audioService.init();
-    (this.audioService as any).unlock?.();
+    this.audioService.unlock();
+    this.audioEnabled = true;
   }
 
   addSound() {
@@ -227,7 +226,6 @@ export class ZenPad implements OnInit {
     this.audioService.stopAllSounds();
   }
 
-  // --- Slider set-API (Angular Material v17+ input thumb) ---
   setMasterVolume(v: number) {
     this.audioService.setMasterVolume(v);
     this.saveSettings();
