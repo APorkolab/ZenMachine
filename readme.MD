@@ -10,7 +10,7 @@
 
 Zen Machine is an advanced web-based audio relaxation tool, rebuilt from the ground up with Angular for a more robust, scalable, and modern experience. It allows users to craft their own serene environment by combining a variety of sounds and tunes. With a plethora of features, Zen Machine aims to provide a comprehensive and customizable audio experience.
 
-This project was refactored to a senior-level application by an AI software engineer. The original author of this project is [Adam Dr. Porkolab (Mr. ProKey)](https://www.adamporkolab.hu).
+This project was refactored to a senior-level application by the original author of this project is [Adam Dr. Porkolab (APorkolab)](https://www.adamporkolab.hu).
 
 ## 🌟 Features
 
