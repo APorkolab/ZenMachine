@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
 import { moveItemInArray } from '@angular/cdk/drag-drop';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 
 export interface ActiveSound {
   id: string;
@@ -9,91 +10,160 @@ export interface ActiveSound {
   volume: number;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AudioService {
-  private audioContext: AudioContext;
-  private masterGainNode: GainNode;
-  private bassEQ: BiquadFilterNode;
-  private midEQ: BiquadFilterNode;
-  private trebleEQ: BiquadFilterNode;
-  private panner: StereoPannerNode;
-  private analyser: AnalyserNode;
-  private sounds = new Map<string, { source: AudioBufferSourceNode, gain: GainNode, name: string, path: string }>();
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  private ctx?: AudioContext;
+  private masterGainNode?: GainNode;
+  private bassEQ?: BiquadFilterNode;
+  private midEQ?: BiquadFilterNode;
+  private trebleEQ?: BiquadFilterNode;
+  private panner?: StereoPannerNode;
+  private analyser?: AnalyserNode;
+
+  private alarmAudio?: HTMLAudioElement;
+
+  private sounds = new Map<
+    string,
+    { source: AudioBufferSourceNode; gain: GainNode; name: string; path: string }
+  >();
+
   private timerTimeout: any;
   private alarmInterval: any;
-  private alarmSound: HTMLAudioElement;
   private isLooping = false;
   private soundCounter = 0;
 
   private activeSoundsSubject = new BehaviorSubject<ActiveSound[]>([]);
-  public activeSounds$ = this.activeSoundsSubject.asObservable();
+  public readonly activeSounds$ = this.activeSoundsSubject.asObservable();
+
   private masterVolumeSubject = new BehaviorSubject<number>(1);
-  public masterVolume$ = this.masterVolumeSubject.asObservable();
+  public readonly masterVolume$ = this.masterVolumeSubject.asObservable();
+
   private panSubject = new BehaviorSubject<number>(0);
-  public pan$ = this.panSubject.asObservable();
+  public readonly pan$ = this.panSubject.asObservable();
+
   private bassSubject = new BehaviorSubject<number>(0);
-  public bass$ = this.bassSubject.asObservable();
+  public readonly bass$ = this.bassSubject.asObservable();
+
   private midSubject = new BehaviorSubject<number>(0);
-  public mid$ = this.midSubject.asObservable();
+  public readonly mid$ = this.midSubject.asObservable();
+
   private trebleSubject = new BehaviorSubject<number>(0);
-  public treble$ = this.trebleSubject.asObservable();
+  public readonly treble$ = this.trebleSubject.asObservable();
 
-  constructor() {
-    this.audioContext = new AudioContext();
-    this.masterGainNode = this.audioContext.createGain();
+  private playbackRateSubject = new BehaviorSubject<number>(1);
+  public readonly playbackRate$ = this.playbackRateSubject.asObservable();
 
-    this.bassEQ = new BiquadFilterNode(this.audioContext, { type: 'lowshelf', frequency: 150, gain: 0 });
-    this.midEQ = new BiquadFilterNode(this.audioContext, { type: 'peaking', frequency: 1000, gain: 0 });
-    this.trebleEQ = new BiquadFilterNode(this.audioContext, { type: 'highshelf', frequency: 3000, gain: 0 });
-    this.panner = new StereoPannerNode(this.audioContext, { pan: 0 });
+  /** Böngészőben hozza létre a Web Audio graphot. Hívd user-gesztusban. */
+  init(): void {
+    if (!this.isBrowser || this.ctx) return;
 
-    this.masterGainNode.connect(this.bassEQ);
-    this.bassEQ.connect(this.midEQ);
-    this.midEQ.connect(this.trebleEQ);
-    this.trebleEQ.connect(this.panner);
-    this.analyser = this.audioContext.createAnalyser();
-    this.panner.connect(this.analyser);
-    this.analyser.connect(this.audioContext.destination);
+    const g = globalThis as any;
+    const AC: typeof AudioContext | undefined = g.AudioContext || g.webkitAudioContext;
+    if (!AC) return;
 
-    this.alarmSound = new Audio('/assets/mp3/alarm.mp3');
+    this.ctx = new AC();
+
+    this.masterGainNode = this.ctx.createGain();
+    this.bassEQ = new BiquadFilterNode(this.ctx, { type: 'lowshelf', frequency: 150, gain: 0 });
+    this.midEQ = new BiquadFilterNode(this.ctx, { type: 'peaking', frequency: 1000, gain: 0 });
+    this.trebleEQ = new BiquadFilterNode(this.ctx, { type: 'highshelf', frequency: 3000, gain: 0 });
+    this.panner = new StereoPannerNode(this.ctx, { pan: 0 });
+    this.analyser = this.ctx.createAnalyser();
+
+    this.masterGainNode
+      .connect(this.bassEQ)
+      .connect(this.midEQ)
+      .connect(this.trebleEQ)
+      .connect(this.panner)
+      .connect(this.analyser)
+      .connect(this.ctx.destination);
+
+    this.masterGainNode.gain.value = this.masterVolumeSubject.value;
+    this.panner.pan.value = this.panSubject.value;
+    this.bassEQ.gain.value = this.bassSubject.value;
+    this.midEQ.gain.value = this.midSubject.value;
+    this.trebleEQ.gain.value = this.trebleSubject.value;
+
+    // helyes assets útvonal (nincs leading "/")
+    this.alarmAudio = new Audio('assets/mp3/alarm.mp3');
+    this.alarmAudio.load();
+
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
   }
 
+  /** User-gesztusban hívd, ha “autoplay blocked” üzenet jön. */
+  unlock(): void {
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+  }
+
+  /** Visszaadja az AnalyserNode-ot (vizualizációhoz). */
   public getAnalyser(): AnalyserNode {
+    const ctx = this.ensureCtx();
+    if (!this.analyser) {
+      this.analyser = ctx.createAnalyser();
+      if (this.panner) {
+        this.panner.disconnect();
+        this.panner.connect(this.analyser).connect(ctx.destination);
+      }
+    }
     return this.analyser;
   }
 
   async loadSound(url: string): Promise<AudioBuffer> {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    return this.audioContext.decodeAudioData(arrayBuffer);
+    const ctx = this.ensureCtx();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to load sound: ${url}`);
+    const arr = await res.arrayBuffer();
+    return await ctx.decodeAudioData(arr);
   }
 
   playSound(name: string, path: string, buffer: AudioBuffer) {
+    const ctx = this.ensureCtx();
+
     const id = `${path}-${this.soundCounter++}`;
-    const source = this.audioContext.createBufferSource();
+    const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.loop = this.isLooping;
+    source.playbackRate.value = this.playbackRateSubject.value;
 
-    const gainNode = this.audioContext.createGain();
+    const gainNode = ctx.createGain();
     gainNode.gain.value = 0.5;
 
-    source.connect(gainNode);
-    gainNode.connect(this.masterGainNode);
+    source.connect(gainNode).connect(this.masterGainNode!);
     source.start();
 
     this.sounds.set(id, { source, gain: gainNode, name, path });
     this.updateActiveSounds();
   }
 
+  playSoundFromPath(name: string, path: string) {
+    this.loadSound(path).then((buffer) => this.playSound(name, path, buffer));
+  }
+
   stopSound(id: string) {
     const sound = this.sounds.get(id);
     if (sound) {
-      sound.source.stop();
-      sound.source.disconnect();
+      try {
+        sound.source.stop();
+      } catch {}
+      try {
+        sound.source.disconnect();
+      } catch {}
       this.sounds.delete(id);
       this.updateActiveSounds();
+    }
+  }
+
+  stopAllSounds() {
+    for (const id of Array.from(this.sounds.keys())) {
+      this.stopSound(id);
     }
   }
 
@@ -101,97 +171,90 @@ export class AudioService {
     const sound = this.sounds.get(id);
     if (sound) {
       sound.gain.gain.value = volume;
+      this.updateActiveSounds();
     }
   }
 
   setMasterVolume(volume: number) {
-    this.masterGainNode.gain.value = volume;
     this.masterVolumeSubject.next(volume);
+    if (!this.isBrowser) return;
+    this.ensureCtx();
+    if (this.masterGainNode) this.masterGainNode.gain.value = volume;
+  }
+
+  setPan(pan: number) {
+    this.panSubject.next(pan);
+    if (!this.isBrowser) return;
+    this.ensureCtx();
+    if (this.panner) this.panner.pan.value = pan;
   }
 
   setEQ(type: 'bass' | 'mid' | 'treble', value: number) {
     switch (type) {
       case 'bass':
-        this.bassEQ.gain.value = value;
         this.bassSubject.next(value);
+        if (this.isBrowser) {
+          this.ensureCtx();
+          if (this.bassEQ) this.bassEQ.gain.value = value;
+        }
         break;
       case 'mid':
-        this.midEQ.gain.value = value;
         this.midSubject.next(value);
+        if (this.isBrowser) {
+          this.ensureCtx();
+          if (this.midEQ) this.midEQ.gain.value = value;
+        }
         break;
       case 'treble':
-        this.trebleEQ.gain.value = value;
         this.trebleSubject.next(value);
+        if (this.isBrowser) {
+          this.ensureCtx();
+          if (this.trebleEQ) this.trebleEQ.gain.value = value;
+        }
         break;
     }
   }
 
-  setPan(pan: number) {
-    this.panner.pan.value = pan;
-    this.panSubject.next(pan);
-  }
-
   setPlaybackRate(rate: number) {
-    for (const sound of this.sounds.values()) {
-      sound.source.playbackRate.value = rate;
+    this.playbackRateSubject.next(rate);
+    if (!this.isBrowser) return;
+    this.ensureCtx();
+    for (const s of this.sounds.values()) {
+      s.source.playbackRate.value = rate;
     }
   }
 
   toggleLoop() {
     this.isLooping = !this.isLooping;
-    for (const sound of this.sounds.values()) {
-      sound.source.loop = this.isLooping;
+    if (!this.isBrowser) return this.isLooping;
+    for (const s of this.sounds.values()) {
+      s.source.loop = this.isLooping;
     }
     return this.isLooping;
   }
 
-  stopAllSounds() {
-    for (const id of this.sounds.keys()) {
-      this.stopSound(id);
-    }
-  }
-
   setTimer(minutes: number) {
-    if (this.timerTimeout) {
-      clearTimeout(this.timerTimeout);
-    }
+    if (this.timerTimeout) clearTimeout(this.timerTimeout);
     const duration = minutes * 60 * 1000;
     this.timerTimeout = setTimeout(() => this.stopAllSounds(), duration);
   }
 
   setAlarm(time: string) {
-    if (this.alarmInterval) {
-      clearInterval(this.alarmInterval);
-    }
-    const [hours, minutes] = time.split(':').map(Number);
+    if (!this.isBrowser) return;
+    if (this.alarmInterval) clearInterval(this.alarmInterval);
+
+    const [hh, mm] = time.split(':').map(Number);
     const alarmTime = new Date();
-    alarmTime.setHours(hours, minutes, 0, 0);
-    if (alarmTime <= new Date()) {
-      alarmTime.setDate(alarmTime.getDate() + 1);
-    }
+    alarmTime.setHours(hh, mm, 0, 0);
+    if (alarmTime <= new Date()) alarmTime.setDate(alarmTime.getDate() + 1);
+
     this.alarmInterval = setInterval(() => {
       if (new Date() >= alarmTime) {
-        this.alarmSound.play();
+        this.alarmAudio?.play().catch(() => {});
         clearInterval(this.alarmInterval);
       }
     }, 1000);
   }
-
-  private updateActiveSounds() {
-    const activeSounds: ActiveSound[] = [];
-    for (const [id, sound] of this.sounds.entries()) {
-      activeSounds.push({
-        id,
-        name: sound.name,
-        path: sound.path,
-        volume: sound.gain.gain.value
-      });
-    }
-    this.activeSoundsSubject.next(activeSounds);
-  }
-
-  private playbackRateSubject = new BehaviorSubject<number>(1);
-  public playbackRate$ = this.playbackRateSubject.asObservable();
 
   getSettings() {
     return {
@@ -208,15 +271,26 @@ export class AudioService {
     return this.activeSoundsSubject.value;
   }
 
-  playSoundFromPath(name: string, path: string) {
-    this.loadSound(path).then(buffer => {
-      this.playSound(name, path, buffer);
-    });
+  reorderActiveSounds(previousIndex: number, currentIndex: number) {
+    const active = [...this.activeSoundsSubject.value];
+    moveItemInArray(active, previousIndex, currentIndex);
+    this.activeSoundsSubject.next(active);
   }
 
-  reorderActiveSounds(previousIndex: number, currentIndex: number) {
-    const activeSounds = this.getActiveSounds();
-    moveItemInArray(activeSounds, previousIndex, currentIndex);
-    this.activeSoundsSubject.next(activeSounds);
+  private ensureCtx(): AudioContext {
+    if (!this.ctx) this.init();
+    if (!this.ctx) throw new Error('Web Audio API not available (SSR/unsupported)');
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
+
+  private updateActiveSounds() {
+    const list: ActiveSound[] = [];
+    for (const [id, s] of this.sounds.entries()) {
+      list.push({ id, name: s.name, path: s.path, volume: s.gain.gain.value });
+    }
+    this.activeSoundsSubject.next(list);
   }
 }

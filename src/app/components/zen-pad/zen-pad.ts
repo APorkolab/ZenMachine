@@ -1,21 +1,20 @@
-import { CdkDragDrop } from '@angular/cdk/drag-drop';
-import { trigger, state, style, transition, animate } from '@angular/animations';
-import { Component, inject, OnInit } from '@angular/core';
+import { animate, state, style, transition, trigger } from '@angular/animations';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Component, inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSliderModule } from '@angular/material/slider';
-import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CommonModule } from '@angular/common';
+import { MatSliderModule } from '@angular/material/slider';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../services/api';
-import { AudioService, ActiveSound } from '../../services/audio';
-import { VisualizerComponent } from '../visualizer/visualizer';
+import { ActiveSound, AudioService } from '../../services/audio';
 import { PresetManagerComponent } from '../preset-manager/preset-manager';
+import { VisualizerComponent } from '../visualizer/visualizer';
 
 @Component({
   selector: 'app-zen-pad',
@@ -44,24 +43,29 @@ import { PresetManagerComponent } from '../preset-manager/preset-manager';
   ],
 })
 export class ZenPad implements OnInit {
-  private audioService = inject(AudioService);
+  // publikus, hogy a template-ből hívható legyen
+  public audioService = inject(AudioService);
   private apiService = inject(ApiService);
+  public readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
+  // Helyes assets útvonalak (nincs leading '/')
   sounds = [
-    { name: 'Heavy Rain', path: '/sounds/heavy-rain.mp3' },
-    { name: 'Bells Tibetan Large', path: '/sounds/bells-tibetan.mp3' },
-    { name: 'Large Waterfall', path: '/sounds/large_waterfall_1.mp3' },
+    { name: 'Heavy Rain', path: 'assets/sounds/heavy-rain.mp3' },
+    { name: 'Bells Tibetan Large', path: 'assets/sounds/bells-tibetan.mp3' },
+    { name: 'Large Waterfall', path: 'assets/sounds/large_waterfall_1.mp3' },
   ];
   selectedSoundPath: string | undefined;
+
   timerValue: number | undefined;
   alarmTime: string | undefined;
   isDarkMode = false;
   isLooping = false;
   playbackRate = 1;
+
   backgrounds = [
-    { name: 'Beach', path: '/assets/image/beach.jpg' },
-    { name: 'Forest', path: '/assets/image/forest.jpg' },
-    { name: 'Random', path: 'random' }
+    { name: 'Beach', path: 'assets/image/beach.jpg' },
+    { name: 'Forest', path: 'assets/image/forest.jpg' },
+    { name: 'Random', path: 'random' },
   ];
   selectedBackground = this.backgrounds[0].path;
 
@@ -86,15 +90,21 @@ export class ZenPad implements OnInit {
     this.changeBackground();
   }
 
+  /** Autoplay policy feloldása (gombhoz) */
+  enableAudio() {
+    this.audioService.init();
+    (this.audioService as any).unlock?.();
+  }
+
   addSound() {
-    if (this.selectedSoundPath) {
-      const selectedSound = this.sounds.find(s => s.path === this.selectedSoundPath);
-      if (selectedSound) {
-        this.audioService.loadSound(this.selectedSoundPath).then((buffer) => {
-          this.audioService.playSound(selectedSound.name, selectedSound.path, buffer);
-        });
-      }
-    }
+    if (!this.selectedSoundPath) return;
+    const selectedSound = this.sounds.find((s) => s.path === this.selectedSoundPath);
+    if (!selectedSound) return;
+
+    this.audioService.init();
+    this.audioService.loadSound(this.selectedSoundPath).then((buffer: AudioBuffer) => {
+      this.audioService.playSound(selectedSound.name, selectedSound.path, buffer);
+    });
   }
 
   stopSound(id: string) {
@@ -127,6 +137,7 @@ export class ZenPad implements OnInit {
   }
 
   changeBackground() {
+    if (!this.isBrowser) return;
     if (this.selectedBackground === 'random') {
       const backgroundUrl = this.apiService.getRandomBackgroundUrl();
       document.body.style.backgroundImage = `url(${backgroundUrl})`;
@@ -148,6 +159,7 @@ export class ZenPad implements OnInit {
   }
 
   toggleDarkMode() {
+    if (!this.isBrowser) return;
     this.isDarkMode = !this.isDarkMode;
     document.body.classList.toggle('dark-mode', this.isDarkMode);
   }
@@ -157,27 +169,34 @@ export class ZenPad implements OnInit {
   }
 
   saveSettings() {
+    if (!this.isBrowser) return;
     const settings = {
       ...this.audioService.getSettings(),
       playbackRate: this.playbackRate,
     };
-    localStorage.setItem('audioSettings', JSON.stringify(settings));
+    try {
+      localStorage.setItem('audioSettings', JSON.stringify(settings));
+    } catch {}
   }
 
   loadSettings() {
-    const settings = JSON.parse(localStorage.getItem('audioSettings') || '{}');
-    if (settings) {
-      this.audioService.setMasterVolume(settings.volume || 1);
-      this.audioService.setPan(settings.pan || 0);
-      this.audioService.setEQ('bass', settings.bass || 0);
-      this.audioService.setEQ('mid', settings.mid || 0);
-      this.audioService.setEQ('treble', settings.treble || 0);
-      this.playbackRate = settings.playbackRate || 1;
-      this.audioService.setPlaybackRate(this.playbackRate);
-    }
+    if (!this.isBrowser) return;
+    try {
+      const settings = JSON.parse(localStorage.getItem('audioSettings') || '{}');
+      if (settings) {
+        this.audioService.setMasterVolume(settings.volume ?? 1);
+        this.audioService.setPan(settings.pan ?? 0);
+        this.audioService.setEQ('bass', settings.bass ?? 0);
+        this.audioService.setEQ('mid', settings.mid ?? 0);
+        this.audioService.setEQ('treble', settings.treble ?? 0);
+        this.playbackRate = settings.playbackRate ?? 1;
+        this.audioService.setPlaybackRate(this.playbackRate);
+      }
+    } catch {}
   }
 
   randomizeSettings() {
+    this.audioService.init();
     const volume = Math.random();
     const pan = Math.random() * 2 - 1;
     const bass = Math.random() * 20 - 10;
@@ -191,12 +210,14 @@ export class ZenPad implements OnInit {
     this.audioService.setEQ('mid', mid);
     this.audioService.setEQ('treble', treble);
     this.audioService.setPlaybackRate(this.playbackRate);
+    this.saveSettings();
   }
 
   randomizeSound() {
-    this.apiService.getRamdomTracks().subscribe(response => {
+    this.audioService.init();
+    this.apiService.getRamdomTracks().subscribe((response) => {
       const randomTrack = response.results[Math.floor(Math.random() * response.results.length)];
-      this.audioService.loadSound(randomTrack.audio).then(buffer => {
+      this.audioService.loadSound(randomTrack.audio).then((buffer: AudioBuffer) => {
         this.audioService.playSound(randomTrack.name, randomTrack.audio, buffer);
       });
     });
@@ -204,6 +225,32 @@ export class ZenPad implements OnInit {
 
   stopAllSounds() {
     this.audioService.stopAllSounds();
+  }
+
+  // --- Slider set-API (Angular Material v17+ input thumb) ---
+  setMasterVolume(v: number) {
+    this.audioService.setMasterVolume(v);
+    this.saveSettings();
+  }
+
+  setPan(v: number) {
+    this.audioService.setPan(v);
+    this.saveSettings();
+  }
+
+  setBass(v: number) {
+    this.audioService.setEQ('bass', v);
+    this.saveSettings();
+  }
+
+  setMid(v: number) {
+    this.audioService.setEQ('mid', v);
+    this.saveSettings();
+  }
+
+  setTreble(v: number) {
+    this.audioService.setEQ('treble', v);
+    this.saveSettings();
   }
 
   drop(event: CdkDragDrop<string[]>) {

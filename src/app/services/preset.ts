@@ -1,4 +1,5 @@
-import { Injectable, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ActiveSound, AudioService } from './audio';
 
@@ -14,25 +15,39 @@ export interface Preset {
   playbackRate: number;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class PresetService {
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private audioService = inject(AudioService);
+
   private presetsSubject = new BehaviorSubject<Preset[]>([]);
-  public presets$ = this.presetsSubject.asObservable();
+  public readonly presets$ = this.presetsSubject.asObservable();
 
   constructor() {
     this.loadPresetsFromStorage();
   }
 
   private loadPresetsFromStorage() {
-    const presets = JSON.parse(localStorage.getItem('presets') || '[]');
-    this.presetsSubject.next(presets);
+    if (!this.isBrowser) {
+      this.presetsSubject.next([]);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem('presets');
+      const presets: Preset[] = raw ? JSON.parse(raw) : [];
+      this.presetsSubject.next(presets);
+    } catch {
+      this.presetsSubject.next([]);
+    }
   }
 
   private savePresetsToStorage() {
-    localStorage.setItem('presets', JSON.stringify(this.presetsSubject.value));
+    if (!this.isBrowser) return;
+    try {
+      localStorage.setItem('presets', JSON.stringify(this.presetsSubject.value));
+    } catch {
+      /* ignore quota / JSON errors */
+    }
   }
 
   getPresets(): Preset[] {
@@ -52,31 +67,31 @@ export class PresetService {
       treble: settings.treble,
       playbackRate: settings.playbackRate,
     };
-    const updatedPresets = [...this.presetsSubject.value, newPreset];
-    this.presetsSubject.next(updatedPresets);
+    const updated = [...this.presetsSubject.value, newPreset];
+    this.presetsSubject.next(updated);
     this.savePresetsToStorage();
   }
 
   deletePreset(id: string) {
-    const updatedPresets = this.presetsSubject.value.filter(p => p.id !== id);
-    this.presetsSubject.next(updatedPresets);
+    const updated = this.presetsSubject.value.filter((p) => p.id !== id);
+    this.presetsSubject.next(updated);
     this.savePresetsToStorage();
   }
 
   loadPreset(id: string) {
-    const preset = this.presetsSubject.value.find(p => p.id === id);
-    if (preset) {
-      this.audioService.stopAllSounds();
-      this.audioService.setMasterVolume(preset.masterVolume);
-      this.audioService.setPan(preset.pan);
-      this.audioService.setEQ('bass', preset.bass);
-      this.audioService.setEQ('mid', preset.mid);
-      this.audioService.setEQ('treble', preset.treble);
-      this.audioService.setPlaybackRate(preset.playbackRate);
+    const preset = this.presetsSubject.value.find((p) => p.id === id);
+    if (!preset) return;
 
-      preset.activeSounds.forEach(sound => {
-        this.audioService.playSoundFromPath(sound.name, sound.path);
-      });
-    }
+    this.audioService.stopAllSounds();
+    this.audioService.setMasterVolume(preset.masterVolume);
+    this.audioService.setPan(preset.pan);
+    this.audioService.setEQ('bass', preset.bass);
+    this.audioService.setEQ('mid', preset.mid);
+    this.audioService.setEQ('treble', preset.treble);
+    this.audioService.setPlaybackRate(preset.playbackRate);
+
+    preset.activeSounds.forEach((s) => {
+      this.audioService.playSoundFromPath(s.name, s.path);
+    });
   }
 }
